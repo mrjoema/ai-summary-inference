@@ -1,0 +1,42 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache git
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application (service name will be passed as build arg)
+ARG SERVICE_NAME
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ${SERVICE_NAME} ./cmd/${SERVICE_NAME}
+
+# Final stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /root/
+
+# Copy the binary from builder stage
+ARG SERVICE_NAME
+COPY --from=builder /app/${SERVICE_NAME} ./${SERVICE_NAME}
+RUN chmod +x ./${SERVICE_NAME}
+
+# Copy config file
+COPY --from=builder /app/config.yaml .
+
+# Copy entrypoint script
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Expose port (will be overridden by docker-compose)
+EXPOSE 8080
+
+# Run the application
+CMD ["/entrypoint.sh"] 

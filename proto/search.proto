@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package search;
+
+option go_package = "./proto";
+
+// Search service definitions
+service SearchService {
+  rpc Search(SearchRequest) returns (SearchResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Tokenizer service definitions
+service TokenizerService {
+  rpc Tokenize(TokenizeRequest) returns (TokenizeResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Inference service definitions
+service InferenceService {
+  rpc Summarize(SummarizeRequest) returns (SummarizeResponse);
+  rpc SummarizeStream(SummarizeRequest) returns (stream SummarizeStreamResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Safety service definitions
+service SafetyService {
+  rpc ValidateInput(ValidateInputRequest) returns (ValidateInputResponse);
+  rpc SanitizeOutput(SanitizeOutputRequest) returns (SanitizeOutputResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// Common messages
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  string service = 2;
+  int64 timestamp = 3;
+}
+
+// Search messages
+message SearchRequest {
+  string query = 1;
+  bool safe_search = 2;
+  int32 num_results = 3;
+}
+
+message SearchResponse {
+  repeated SearchResult results = 1;
+  string query = 2;
+  bool success = 3;
+  string error = 4;
+}
+
+message SearchResult {
+  string title = 1;
+  string url = 2;
+  string snippet = 3;
+  string display_url = 4;
+}
+
+// Tokenizer messages
+message TokenizeRequest {
+  string text = 1;
+  int32 max_length = 2;
+}
+
+message TokenizeResponse {
+  repeated int32 tokens = 1;
+  int32 token_count = 2;
+  string truncated_text = 3;
+  bool success = 4;
+  string error = 5;
+}
+
+// Inference messages
+message SummarizeRequest {
+  repeated int32 tokens = 1;
+  string original_text = 2;
+  bool streaming = 3;
+  int32 max_length = 4;
+}
+
+message SummarizeResponse {
+  string summary = 1;
+  bool success = 2;
+  string error = 3;
+  int32 tokens_used = 4;
+  float confidence = 5;
+}
+
+message SummarizeStreamResponse {
+  string token = 1;
+  bool is_final = 2;
+  string error = 3;
+  int32 position = 4;
+}
+
+// Safety messages
+message ValidateInputRequest {
+  string text = 1;
+  string client_ip = 2;
+}
+
+message ValidateInputResponse {
+  bool is_safe = 1;
+  string sanitized_text = 2;
+  repeated string warnings = 3;
+  string error = 4;
+}
+
+message SanitizeOutputRequest {
+  string text = 1;
+}
+
+message SanitizeOutputResponse {
+  string sanitized_text = 1;
+  repeated string warnings = 2;
+  string error = 3;
+} 

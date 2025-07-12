@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-search-config
+  namespace: ai-search
+data:
+  config.yaml: |
+    environment: production
+    log_level: info
+    
+    gateway:
+      port: 8080
+      timeout: 30s
+    
+    services:
+      search:
+        host: search-service
+        port: 8081
+        timeout: 10s
+      
+      tokenizer:
+        host: tokenizer-service
+        port: 8082
+        timeout: 5s
+      
+      inference:
+        host: inference-service
+        port: 8083
+        timeout: 30s
+      
+      safety:
+        host: safety-service
+        port: 8084
+        timeout: 5s
+    
+    redis:
+      host: redis-service
+      port: 6379
+      password: ""
+      db: 0
+    
+    google:
+      api_key: ""  # Set via environment variable
+      cx: ""       # Set via environment variable 

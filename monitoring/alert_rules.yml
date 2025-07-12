@@ -1,0 +1,137 @@
+groups:
+  - name: ai-search-alerts
+    rules:
+      # High CPU usage alerts
+      - alert: HighCPUUsage
+        expr: ai_search_cpu_usage_percent > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "{{ $labels.service }} on {{ $labels.instance }} has CPU usage above 80% for more than 2 minutes"
+
+      - alert: CriticalCPUUsage
+        expr: ai_search_cpu_usage_percent > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical CPU usage detected"
+          description: "{{ $labels.service }} on {{ $labels.instance }} has CPU usage above 95% for more than 1 minute"
+
+      # High memory usage alerts
+      - alert: HighMemoryUsage
+        expr: ai_search_memory_usage_percent > 85
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "{{ $labels.service }} on {{ $labels.instance }} has memory usage above 85% for more than 2 minutes"
+
+      - alert: CriticalMemoryUsage
+        expr: ai_search_memory_usage_percent > 95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical memory usage detected"
+          description: "{{ $labels.service }} on {{ $labels.instance }} has memory usage above 95% for more than 1 minute"
+
+      # GPU usage alerts (for inference service)
+      - alert: HighGPUUsage
+        expr: ai_search_gpu_usage_percent > 90
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GPU usage detected"
+          description: "{{ $labels.service }} on {{ $labels.instance }} GPU {{ $labels.gpu_id }} has usage above 90% for more than 2 minutes"
+
+      - alert: GPUMemoryHigh
+        expr: ai_search_gpu_memory_usage_bytes > 6000000000  # 6GB
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GPU memory usage detected"
+          description: "{{ $labels.service }} on {{ $labels.instance }} GPU {{ $labels.gpu_id }} has memory usage above 6GB for more than 2 minutes"
+
+      # Service health alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute"
+
+      # High error rate alerts
+      - alert: HighErrorRate
+        expr: rate(ai_search_requests_total{status="error"}[5m]) / rate(ai_search_requests_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "{{ $labels.service }} has error rate above 10% for more than 2 minutes"
+
+      # Slow inference alerts
+      - alert: SlowInference
+        expr: histogram_quantile(0.95, rate(ai_search_inference_latency_seconds_bucket[5m])) > 30
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow AI inference detected"
+          description: "{{ $labels.service }} inference latency 95th percentile is above 30 seconds for more than 2 minutes"
+
+      # Ollama service alerts
+      - alert: OllamaHighLatency
+        expr: histogram_quantile(0.95, rate(ai_search_ollama_response_time_seconds_bucket[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Ollama latency detected"
+          description: "Ollama response time 95th percentile is above 10 seconds for more than 2 minutes"
+
+      - alert: OllamaErrorRate
+        expr: rate(ai_search_ollama_requests_total{status="error"}[5m]) / rate(ai_search_ollama_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Ollama error rate detected"
+          description: "Ollama error rate is above 5% for more than 2 minutes"
+
+      # Tokenizer service alerts (CPU intensive)
+      - alert: TokenizerHighLoad
+        expr: ai_search_cpu_usage_percent{service="tokenizer"} > 90
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tokenizer service under high load"
+          description: "Tokenizer service CPU usage is above 90% for more than 1 minute"
+
+      # Request volume alerts
+      - alert: LowRequestVolume
+        expr: rate(ai_search_requests_total[5m]) < 0.1
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low request volume"
+          description: "{{ $labels.service }} is receiving less than 0.1 requests per second for more than 5 minutes"
+
+      - alert: HighRequestVolume
+        expr: rate(ai_search_requests_total[5m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request volume"
+          description: "{{ $labels.service }} is receiving more than 100 requests per second for more than 2 minutes" 

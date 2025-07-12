@@ -1,0 +1,83 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  # Gateway service
+  - job_name: 'ai-search-gateway'
+    static_configs:
+      - targets: ['gateway:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Inference service (GPU monitoring)
+  - job_name: 'ai-search-inference'
+    static_configs:
+      - targets: ['inference:8083']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Search service
+  - job_name: 'ai-search-search'
+    static_configs:
+      - targets: ['search:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Tokenizer service (CPU intensive)
+  - job_name: 'ai-search-tokenizer'
+    static_configs:
+      - targets: ['tokenizer:8082']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Safety service
+  - job_name: 'ai-search-safety'
+    static_configs:
+      - targets: ['safety:8084']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Ollama service
+  - job_name: 'ollama'
+    static_configs:
+      - targets: ['ollama:11434']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 10s
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 10s
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093 

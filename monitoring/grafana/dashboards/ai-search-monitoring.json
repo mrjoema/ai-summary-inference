@@ -1,0 +1,250 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "AI Search Engine Monitoring",
+    "tags": ["ai-search", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Usage by Service",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ai_search_cpu_usage_percent",
+            "legendFormat": "{{service}} - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "CPU %",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Memory Usage by Service",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ai_search_memory_usage_percent",
+            "legendFormat": "{{service}} - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory %",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "GPU Usage (Inference Service)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ai_search_gpu_usage_percent",
+            "legendFormat": "GPU {{gpu_id}} - {{instance}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "GPU %",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "GPU Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "ai_search_gpu_memory_usage_bytes / 1024 / 1024 / 1024",
+            "legendFormat": "GPU {{gpu_id}} Memory (GB)"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Memory (GB)",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Request Rate by Service",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ai_search_requests_total[5m])",
+            "legendFormat": "{{service}} - {{method}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Requests/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 6,
+        "title": "Error Rate by Service",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ai_search_requests_total{status=\"error\"}[5m]) / rate(ai_search_requests_total[5m]) * 100",
+            "legendFormat": "{{service}} Error Rate %"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Error Rate %",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      },
+      {
+        "id": 7,
+        "title": "AI Inference Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ai_search_inference_latency_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(ai_search_inference_latency_seconds_bucket[5m]))",
+            "legendFormat": "50th Percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (seconds)",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        }
+      },
+      {
+        "id": 8,
+        "title": "Ollama Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(ai_search_ollama_response_time_seconds_bucket[5m]))",
+            "legendFormat": "95th Percentile"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(ai_search_ollama_response_time_seconds_bucket[5m]))",
+            "legendFormat": "50th Percentile"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Response Time (seconds)",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        }
+      },
+      {
+        "id": 9,
+        "title": "Tokens Processed",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ai_search_tokens_processed_total[5m])",
+            "legendFormat": "{{service}} - {{model}}"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Tokens/sec",
+            "min": 0
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 32
+        }
+      },
+      {
+        "id": 10,
+        "title": "Service Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 32
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  }
+} 

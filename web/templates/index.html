@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.2rem;
+        }
+
+        .search-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .search-input {
+            padding: 1rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-options {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .search-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .search-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.searching {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.summarizing {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .search-results {
+            margin-bottom: 2rem;
+        }
+
+        .search-results h2 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .search-result {
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: box-shadow 0.3s;
+        }
+
+        .search-result:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .search-result h3 {
+            color: #1a73e8;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .search-result a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+
+        .search-result a:hover {
+            text-decoration: underline;
+        }
+
+        .search-result .url {
+            color: #5f6368;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .search-result .snippet {
+            color: #5f6368;
+            line-height: 1.5;
+        }
+
+        .ai-summary {
+            border-top: 2px solid #e1e5e9;
+            padding-top: 2rem;
+        }
+
+        .ai-summary h2 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ai-summary .summary-content {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1.5rem;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        .streaming-indicator {
+            display: inline-block;
+            width: 3px;
+            height: 1.2rem;
+            background: #667eea;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .search-options {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 AI Search Engine</h1>
+            <p>Search the web with AI-powered summaries</p>
+        </div>
+
+        <div class="search-section">
+            <form class="search-form" id="searchForm">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="searchInput" 
+                    placeholder="Enter your search query..."
+                    required
+                >
+                <div class="search-options">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="safeSearch" checked>
+                        <label for="safeSearch">Safe Search</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="streaming">
+                        <label for="streaming">Streaming Mode</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <label for="numResults">Results:</label>
+                        <select id="numResults">
+                            <option value="3">3</option>
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="search-button" id="searchButton">
+                    Search
+                </button>
+            </form>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="status" id="status"></div>
+            
+            <div class="search-results" id="searchResults" style="display: none;">
+                <h2>Search Results</h2>
+                <div id="searchResultsList"></div>
+            </div>
+
+            <div class="ai-summary" id="aiSummary" style="display: none;">
+                <h2>
+                    🤖 AI Summary
+                    <span class="streaming-indicator" id="streamingIndicator" style="display: none;"></span>
+                </h2>
+                <div class="summary-content" id="summaryContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTaskId = null;
+        let eventSource = null;
+        let pollingInterval = null;
+
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await performSearch();
+        });
+
+        async function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            const safeSearch = document.getElementById('safeSearch').checked;
+            const streaming = document.getElementById('streaming').checked;
+            const numResults = parseInt(document.getElementById('numResults').value);
+
+            if (!query) return;
+
+            // Reset UI
+            document.getElementById('searchButton').disabled = true;
+            document.getElementById('searchButton').textContent = 'Searching...';
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('searchResults').style.display = 'none';
+            document.getElementById('aiSummary').style.display = 'none';
+            
+            try {
+                // Start search
+                const response = await fetch('/api/v1/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query,
+                        safe_search: safeSearch,
+                        streaming,
+                        num_results: numResults
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Search failed');
+                }
+
+                currentTaskId = data.task_id;
+                updateStatus('pending', 'Search initiated...');
+
+                // Start monitoring
+                if (streaming) {
+                    startEventSourceStream();
+                } else {
+                    startPolling();
+                }
+
+            } catch (error) {
+                showError('Search failed: ' + error.message);
+                resetUI();
+            }
+        }
+
+        function startEventSourceStream() {
+            const streamUrl = `/api/v1/search/stream/${currentTaskId}`;
+            
+            eventSource = new EventSource(streamUrl);
+            
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleTaskUpdate(data);
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('EventSource error:', error);
+                // Fallback to polling
+                startPolling();
+            };
+            
+            eventSource.addEventListener('update', (event) => {
+                const data = JSON.parse(event.data);
+                handleTaskUpdate(data);
+            });
+        }
+
+        function startPolling() {
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/v1/search/status/${currentTaskId}`);
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        handleTaskUpdate(data);
+                        
+                        if (data.status === 'completed' || data.status === 'failed') {
+                            clearInterval(pollingInterval);
+                            resetUI();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+            }, 1000);
+        }
+
+        function handleTaskUpdate(data) {
+            // Update status
+            updateStatus(data.status, getStatusMessage(data.status));
+            
+            // Show search results
+            if (data.search_results && data.search_results.length > 0) {
+                displaySearchResults(data.search_results);
+            }
+            
+            // Show AI summary
+            if (data.status === 'summarizing' || data.status === 'completed') {
+                displayAISummary(data.summary || '', data.status === 'summarizing');
+            }
+            
+            // Handle streaming tokens
+            if (data.new_tokens && data.new_tokens.length > 0) {
+                appendStreamingTokens(data.new_tokens);
+            }
+            
+            // Handle errors
+            if (data.error) {
+                showError(data.error);
+            }
+        }
+
+        function updateStatus(status, message) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = message;
+        }
+
+        function getStatusMessage(status) {
+            switch (status) {
+                case 'pending': return 'Initializing search...';
+                case 'validating': return 'Validating input...';
+                case 'searching': return 'Searching the web...';
+                case 'summarizing': return 'Generating AI summary...';
+                case 'completed': return 'Search completed!';
+                case 'failed': return 'Search failed';
+                default: return 'Processing...';
+            }
+        }
+
+        function displaySearchResults(results) {
+            const searchResultsEl = document.getElementById('searchResults');
+            const listEl = document.getElementById('searchResultsList');
+            
+            listEl.innerHTML = '';
+            
+            results.forEach(result => {
+                const resultEl = document.createElement('div');
+                resultEl.className = 'search-result';
+                resultEl.innerHTML = `
+                    <h3><a href="${result.url}" target="_blank">${result.title}</a></h3>
+                    <div class="url">${result.display_url || result.url}</div>
+                    <div class="snippet">${result.snippet}</div>
+                `;
+                listEl.appendChild(resultEl);
+            });
+            
+            searchResultsEl.style.display = 'block';
+        }
+
+        function displayAISummary(summary, isStreaming) {
+            const summaryEl = document.getElementById('aiSummary');
+            const contentEl = document.getElementById('summaryContent');
+            const indicatorEl = document.getElementById('streamingIndicator');
+            
+            contentEl.textContent = summary;
+            indicatorEl.style.display = isStreaming ? 'inline-block' : 'none';
+            summaryEl.style.display = 'block';
+        }
+
+        function appendStreamingTokens(tokens) {
+            const contentEl = document.getElementById('summaryContent');
+            tokens.forEach(token => {
+                contentEl.textContent += token;
+            });
+        }
+
+        function showError(message) {
+            const errorEl = document.createElement('div');
+            errorEl.className = 'error';
+            errorEl.textContent = message;
+            document.getElementById('resultsSection').appendChild(errorEl);
+        }
+
+        function resetUI() {
+            document.getElementById('searchButton').disabled = false;
+            document.getElementById('searchButton').textContent = 'Search';
+            
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+            
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,231 @@
+# Docker Compose file for AI Search Engine with Monitoring
+
+services:
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-search-network
+
+  # Ollama service for AI inference
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
+    networks:
+      - ai-search-network
+    # Uncomment the following lines if you have GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Safety service
+  safety:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: safety
+    ports:
+      - "8084:8084"
+    environment:
+      - SERVICE_NAME=safety
+      - REDIS_HOST=redis
+      - LOG_LEVEL=info
+    depends_on:
+      - redis
+    networks:
+      - ai-search-network
+
+  # Search service
+  search:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: search
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVICE_NAME=search
+      - REDIS_HOST=redis
+      - LOG_LEVEL=info
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_CX=${GOOGLE_CX:-}
+    depends_on:
+      - redis
+    networks:
+      - ai-search-network
+
+  # Tokenizer service (CPU intensive)
+  tokenizer:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: tokenizer
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVICE_NAME=tokenizer
+      - REDIS_HOST=redis
+      - LOG_LEVEL=info
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+    networks:
+      - ai-search-network
+
+  # Inference service (GPU intensive - can be scaled)
+  inference:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: inference
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVICE_NAME=inference
+      - REDIS_HOST=redis
+      - OLLAMA_HOST=ollama
+      - LOG_LEVEL=info
+    depends_on:
+      - redis
+      - ollama
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 2G
+        reservations:
+          cpus: '2.0'
+          memory: 1G
+    networks:
+      - ai-search-network
+
+  # Gateway service
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - OLLAMA_HOST=ollama
+      - SEARCH_HOST=search
+      - TOKENIZER_HOST=tokenizer
+      - INFERENCE_HOST=inference
+      - SAFETY_HOST=safety
+      - LOG_LEVEL=info
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - GOOGLE_CX=${GOOGLE_CX:-}
+    depends_on:
+      - redis
+      - safety
+      - search
+      - tokenizer
+      - inference
+    networks:
+      - ai-search-network
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - ai-search-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+    networks:
+      - ai-search-network
+
+  # Node exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - ai-search-network
+
+  # cAdvisor for container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    ports:
+      - "8085:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - ai-search-network
+
+volumes:
+  redis_data:
+  ollama_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  ai-search-network:
+    driver: bridge 
