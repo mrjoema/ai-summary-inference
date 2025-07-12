@@ -92,9 +92,16 @@ func (s *SafetyService) ValidateInput(ctx context.Context, req *pb.ValidateInput
 		}
 	}
 
-	// Check for inappropriate content (warn but don't block)
+	// Check for inappropriate content
 	for _, pattern := range s.inappropriatePatterns {
 		if pattern.MatchString(text) {
+			if req.SafeSearch {
+				return &pb.ValidateInputResponse{
+					IsSafe:        false,
+					SanitizedText: "",
+					Warnings:      []string{"Inappropriate content detected and blocked by safe search"},
+				}, nil
+			}
 			warnings = append(warnings, "Potentially inappropriate content detected")
 			break
 		}
@@ -165,8 +172,11 @@ func (s *SafetyService) sanitizeText(text string) string {
 		return r
 	}, text)
 
-	// HTML escape
-	text = html.EscapeString(text)
+	// Don't HTML escape for AI summaries - this causes &#34; and &#39; issues
+	// Only escape if the text contains actual HTML tags
+	if strings.Contains(text, "<") && strings.Contains(text, ">") {
+		text = html.EscapeString(text)
+	}
 
 	// Normalize whitespace
 	text = regexp.MustCompile(`\s+`).ReplaceAllString(text, " ")
@@ -204,6 +214,11 @@ func (s *SafetyService) compileInappropriatePatterns() {
 		`\b(drugs?|cocaine|heroin|marijuana)\b`,
 		`\b(adult|porn|sex|xxx)\b`,
 		`\b(violence|kill|murder|bomb)\b`,
+		`\b(fuck|shit|damn|bitch|ass|crap)\b`,
+		`\b(wtf|what the fuck|fucking|fucked)\b`,
+		`\b(hell|goddamn|jesus christ)\b`,
+		`\b(stupid|idiot|moron|retard)\b`,
+		`\b(hate|racist|nazi|terrorist)\b`,
 	}
 
 	s.inappropriatePatterns = make([]*regexp.Regexp, len(patterns))

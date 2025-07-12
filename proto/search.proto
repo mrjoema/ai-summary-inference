@@ -101,6 +101,7 @@ message SummarizeStreamResponse {
 message ValidateInputRequest {
   string text = 1;
   string client_ip = 2;
+  bool safe_search = 3;
 }
 
 message ValidateInputResponse {

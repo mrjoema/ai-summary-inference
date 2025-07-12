@@ -662,6 +662,7 @@ type ValidateInputRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
 	ClientIp      string                 `protobuf:"bytes,2,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
+	SafeSearch    bool                   `protobuf:"varint,3,opt,name=safe_search,json=safeSearch,proto3" json:"safe_search,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -708,6 +709,13 @@ func (x *ValidateInputRequest) GetClientIp() string {
 		return x.ClientIp
 	}
 	return ""
+}
+
+func (x *ValidateInputRequest) GetSafeSearch() bool {
+	if x != nil {
+		return x.SafeSearch
+	}
+	return false
 }
 
 type ValidateInputResponse struct {
@@ -939,10 +947,12 @@ const file_proto_search_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x19\n" +
 	"\bis_final\x18\x02 \x01(\bR\aisFinal\x12\x14\n" +
 	"\x05error\x18\x03 \x01(\tR\x05error\x12\x1a\n" +
-	"\bposition\x18\x04 \x01(\x05R\bposition\"G\n" +
+	"\bposition\x18\x04 \x01(\x05R\bposition\"h\n" +
 	"\x14ValidateInputRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
-	"\tclient_ip\x18\x02 \x01(\tR\bclientIp\"\x89\x01\n" +
+	"\tclient_ip\x18\x02 \x01(\tR\bclientIp\x12\x1f\n" +
+	"\vsafe_search\x18\x03 \x01(\bR\n" +
+	"safeSearch\"\x89\x01\n" +
 	"\x15ValidateInputResponse\x12\x17\n" +
 	"\ais_safe\x18\x01 \x01(\bR\x06isSafe\x12%\n" +
 	"\x0esanitized_text\x18\x02 \x01(\tR\rsanitizedText\x12\x1a\n" +

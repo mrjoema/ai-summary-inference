@@ -335,6 +335,7 @@
         let currentTaskId = null;
         let eventSource = null;
         let pollingInterval = null;
+        let isStreamingMode = false;
 
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -355,6 +356,12 @@
             document.getElementById('resultsSection').style.display = 'block';
             document.getElementById('searchResults').style.display = 'none';
             document.getElementById('aiSummary').style.display = 'none';
+            document.getElementById('summaryContent').textContent = '';
+            document.getElementById('streamingIndicator').style.display = 'none';
+            
+            // Set streaming mode flag
+            isStreamingMode = streaming;
+            window._hasStreamedTokens = false;
             
             try {
                 // Start search
@@ -444,14 +451,29 @@
                 displaySearchResults(data.search_results);
             }
             
-            // Show AI summary
-            if (data.status === 'summarizing' || data.status === 'completed') {
-                displayAISummary(data.summary || '', data.status === 'summarizing');
-            }
-            
-            // Handle streaming tokens
-            if (data.new_tokens && data.new_tokens.length > 0) {
-                appendStreamingTokens(data.new_tokens);
+            // Handle AI summary based on streaming mode
+            if (isStreamingMode) {
+                // In streaming mode, only handle streaming tokens
+                if (data.new_tokens && data.new_tokens.length > 0) {
+                    appendStreamingTokens(data.new_tokens);
+                    // Mark that we have received streamed tokens
+                    window._hasStreamedTokens = true;
+                }
+                // When streaming is complete, just hide the indicator
+                if (data.status === 'completed') {
+                    document.getElementById('streamingIndicator').style.display = 'none';
+                    // If no tokens were streamed, but a summary is present, set it (fallback for edge cases)
+                    if (!window._hasStreamedTokens && data.summary) {
+                        document.getElementById('summaryContent').textContent = data.summary;
+                    }
+                }
+            } else {
+                // In non-streaming mode, show the full summary when available
+                if (data.status === 'completed') {
+                    displayAISummary(data.summary || '', false);
+                } else if (data.status === 'summarizing' && data.summary) {
+                    displayAISummary(data.summary, true);
+                }
             }
             
             // Handle errors
@@ -508,10 +530,24 @@
             summaryEl.style.display = 'block';
         }
 
+        function decodeHTMLEntities(str) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = str;
+            return txt.value;
+        }
+
         function appendStreamingTokens(tokens) {
             const contentEl = document.getElementById('summaryContent');
+            const indicatorEl = document.getElementById('streamingIndicator');
+            
+            // Show the AI summary section if it's not visible
+            document.getElementById('aiSummary').style.display = 'block';
+            
+            // Show streaming indicator
+            indicatorEl.style.display = 'inline-block';
+            
             tokens.forEach(token => {
-                contentEl.textContent += token;
+                contentEl.textContent += decodeHTMLEntities(token);
             });
         }
 
@@ -535,6 +571,10 @@
                 clearInterval(pollingInterval);
                 pollingInterval = null;
             }
+            
+            // Reset streaming mode flag
+            isStreamingMode = false;
+            window._hasStreamedTokens = false;
         }
     </script>
 </body>

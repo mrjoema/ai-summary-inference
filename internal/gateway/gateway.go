@@ -288,8 +288,9 @@ func (g *Gateway) processSearch(task *SearchTask, req SearchRequest) {
 
 	// Validate input
 	safetyResp, err := g.safetyClient.ValidateInput(ctx, &pb.ValidateInputRequest{
-		Text:     req.Query,
-		ClientIp: "",
+		Text:       req.Query,
+		ClientIp:   "",
+		SafeSearch: req.SafeSearch,
 	})
 	if err != nil {
 		g.updateTaskError(task, fmt.Sprintf("Safety validation failed: %v", err))
