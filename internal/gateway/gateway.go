@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -359,12 +360,45 @@ func (g *Gateway) processAndStreamSearch(c *gin.Context, query string, safeSearc
 		return
 	}
 
+	// Collect tokens for safety validation
+	var completeSummary strings.Builder
+	
 	// Stream tokens as they arrive
 	for {
 		response, err := stream.Recv()
 		if err != nil {
 			if err.Error() == "EOF" {
-				// Stream completed
+				// Stream completed - validate and send final summary
+				finalSummary := completeSummary.String()
+				if finalSummary != "" {
+					safetyCtx, safetyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer safetyCancel()
+					
+					sanitizeResp, err := g.safetyClient.SanitizeOutput(safetyCtx, &pb.SanitizeOutputRequest{
+						Text: finalSummary,
+					})
+					if err != nil {
+						log.Errorf("Streaming output sanitization failed: %v", err)
+						c.SSEvent("error", gin.H{"message": "Summary sanitization failed"})
+						return
+					}
+					
+					if len(sanitizeResp.Warnings) > 0 {
+						log.Warnf("Streaming AI output sanitized with warnings: %v", sanitizeResp.Warnings)
+					}
+					
+					// Send sanitized summary if different from original
+					if sanitizeResp.SanitizedText != finalSummary {
+						log.Warnf("AI output was modified by safety filter")
+						c.SSEvent("summary_sanitized", gin.H{
+							"type": "summary_sanitized", 
+							"original_length": len(finalSummary),
+							"sanitized_length": len(sanitizeResp.SanitizedText),
+							"warnings": sanitizeResp.Warnings,
+						})
+					}
+				}
+				
 				c.SSEvent("complete", gin.H{"type": "complete"})
 				return
 			}
@@ -379,8 +413,12 @@ func (g *Gateway) processAndStreamSearch(c *gin.Context, query string, safeSearc
 			return
 		}
 
-		// Send token if available
+		// Send token if available and collect for safety validation
 		if response.Token != "" {
+			// Collect token for final safety check
+			completeSummary.WriteString(response.Token)
+			
+			// Send token to user for real-time display
 			c.SSEvent("token", gin.H{
 				"type": "token",
 				"token": response.Token,
@@ -391,6 +429,36 @@ func (g *Gateway) processAndStreamSearch(c *gin.Context, query string, safeSearc
 
 		// Check if final
 		if response.IsFinal {
+			// Validate complete summary before finalizing
+			finalSummary := completeSummary.String()
+			if finalSummary != "" {
+				safetyCtx, safetyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer safetyCancel()
+				
+				sanitizeResp, err := g.safetyClient.SanitizeOutput(safetyCtx, &pb.SanitizeOutputRequest{
+					Text: finalSummary,
+				})
+				if err != nil {
+					log.Errorf("Streaming output sanitization failed: %v", err)
+					c.SSEvent("error", gin.H{"message": "Summary sanitization failed"})
+					return
+				}
+				
+				if len(sanitizeResp.Warnings) > 0 {
+					log.Warnf("Streaming AI output sanitized with warnings: %v", sanitizeResp.Warnings)
+				}
+				
+				// Check if content was modified by safety filter
+				if sanitizeResp.SanitizedText != finalSummary {
+					log.Warnf("AI output was modified by safety filter - notifying user")
+					c.SSEvent("summary_sanitized", gin.H{
+						"type": "summary_sanitized", 
+						"message": "Summary was filtered for safety",
+						"warnings": sanitizeResp.Warnings,
+					})
+				}
+			}
+			
 			c.SSEvent("summary", gin.H{"type": "summary"})
 			c.SSEvent("complete", gin.H{"type": "complete"})
 			return
@@ -488,13 +556,34 @@ func (g *Gateway) processSearchSync(req SearchRequest) SearchResponse {
 	
 	var summary string
 	if response.Error != "" {
+		log.Infof("LLM response has error: %s", response.Error)
 		summary = "Summary unavailable"
 	} else {
-		summary = response.Summary
-		if summary == "" {
+		rawSummary := response.Summary
+		if rawSummary == "" {
 			// Reconstruct from tokens
 			for _, token := range response.Tokens {
-				summary += token
+				rawSummary += token
+			}
+		}
+		
+		log.Errorf("DEBUG: SAFETY: Starting output sanitization for summary of length %d", len(rawSummary))
+		
+		// CRITICAL: Sanitize AI output before returning to user
+		safetyCtx, safetyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer safetyCancel()
+		
+		sanitizeResp, err := g.safetyClient.SanitizeOutput(safetyCtx, &pb.SanitizeOutputRequest{
+			Text: rawSummary,
+		})
+		if err != nil {
+			log.Errorf("Output sanitization failed: %v", err)
+			summary = "Summary unavailable due to safety processing error"
+		} else {
+			log.Errorf("DEBUG: SAFETY: Output sanitization completed, warnings: %d", len(sanitizeResp.Warnings))
+			summary = sanitizeResp.SanitizedText
+			if len(sanitizeResp.Warnings) > 0 {
+				log.Warnf("AI output sanitized with warnings: %v", sanitizeResp.Warnings)
 			}
 		}
 	}

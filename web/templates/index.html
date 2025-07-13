@@ -444,6 +444,11 @@
                 handleStreamingUpdate(data);
             });
             
+            eventSource.addEventListener('summary_sanitized', (event) => {
+                const data = JSON.parse(event.data);
+                handleStreamingUpdate(data);
+            });
+            
             eventSource.addEventListener('complete', (event) => {
                 const data = JSON.parse(event.data);
                 handleStreamingUpdate(data);
@@ -485,6 +490,17 @@
                 // Final summary received
                 document.getElementById('streamingIndicator').style.display = 'none';
                 updateStatus('completed', 'Summary completed');
+            } else if (data.type === 'summary_sanitized') {
+                // AI output was sanitized - show warning
+                console.log('AI output was sanitized:', data);
+                const summarySection = document.getElementById('aiSummary');
+                if (summarySection) {
+                    const warningEl = document.createElement('div');
+                    warningEl.className = 'safety-warning';
+                    warningEl.style.cssText = 'background: #fff3cd; color: #856404; padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; font-size: 0.9rem;';
+                    warningEl.innerHTML = '⚠️ ' + (data.message || 'Content was filtered for safety');
+                    summarySection.appendChild(warningEl);
+                }
             } else if (data.type === 'complete') {
                 // Stream completed
                 document.getElementById('streamingIndicator').style.display = 'none';

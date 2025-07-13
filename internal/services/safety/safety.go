@@ -144,6 +144,14 @@ func (s *SafetyService) SanitizeOutput(ctx context.Context, req *pb.SanitizeOutp
 		}
 	}
 
+	// Filter inappropriate content from AI output
+	for _, pattern := range s.inappropriatePatterns {
+		if pattern.MatchString(sanitizedText) {
+			sanitizedText = pattern.ReplaceAllString(sanitizedText, "[CONTENT FILTERED]")
+			warnings = append(warnings, "Inappropriate content filtered from AI output")
+		}
+	}
+
 	log.Infof("Output sanitization complete. Warnings: %d", len(warnings))
 
 	return &pb.SanitizeOutputResponse{
