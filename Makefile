@@ -1,7 +1,7 @@
 # Variables
 DOCKER_REGISTRY ?= ai-search
 VERSION ?= latest
-SERVICES = gateway search tokenizer inference llm safety
+SERVICES = gateway search llm safety
 
 .PHONY: all build push deploy clean test proto
 
@@ -21,11 +21,10 @@ build:
 	@echo "Building services..."
 	go build -o gateway ./cmd/gateway
 	go build -o search ./cmd/search
-	go build -o tokenizer ./cmd/tokenizer
-	go build -o inference ./cmd/inference
 	go build -o llm ./cmd/llm
 	go build -o safety ./cmd/safety
 	@echo "Build complete"
+	@echo "Note: tokenizer and inference services are now Python-based and built via Docker"
 
 # Push all images to registry
 push: build

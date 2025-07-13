@@ -71,57 +71,55 @@ services:
     networks:
       - ai-search-network
 
-  # Enterprise Tokenizer service (CPU optimized for scaling)
+  # Python Tokenizer service (Real BART tokenization + detokenization)
   tokenizer:
     build:
       context: .
-      dockerfile: Dockerfile.microservice
-      args:
-        SERVICE_NAME: tokenizer
+      dockerfile: Dockerfile.tokenizer-python
     ports:
       - "8082:8082"
     environment:
-      - SERVICE_NAME=tokenizer
       - REDIS_HOST=redis
-      - LOG_LEVEL=info
+      - TRANSFORMERS_CACHE=/app/models
+      - HF_HOME=/app/models
+    volumes:
+      - tokenizer_models:/app/models  # Persist tokenizer models
     depends_on:
       - redis
     deploy:
       resources:
         limits:
           cpus: '2.0'
-          memory: 1G
+          memory: 2G  # More memory for tokenizer models
         reservations:
           cpus: '1.0'
-          memory: 512M
+          memory: 1G
     networks:
       - ai-search-network
 
-  # Inference service (GPU intensive - can be scaled)
+  # Python Inference service (Real BART summarization, Mac optimized)
   inference:
     build:
       context: .
-      dockerfile: Dockerfile.microservice
-      args:
-        SERVICE_NAME: inference
+      dockerfile: Dockerfile.inference-python
     ports:
       - "8083:8083"
     environment:
-      - SERVICE_NAME=inference
-      - REDIS_HOST=redis
-      - VLLM_HOST=vllm
-      - LOG_LEVEL=info
+      - INFERENCE_MODEL=facebook/bart-large-cnn
+      - TRANSFORMERS_CACHE=/app/models
+      - HF_HOME=/app/models
+    volumes:
+      - inference_models:/app/models  # Persist model cache
     depends_on:
       - redis
-      - vllm
     deploy:
       resources:
         limits:
           cpus: '4.0'
-          memory: 2G
+          memory: 4G  # More memory for BART model
         reservations:
           cpus: '2.0'
-          memory: 1G
+          memory: 2G
     networks:
       - ai-search-network
 
@@ -249,6 +247,8 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  tokenizer_models:  # Persist tokenizer model downloads
+  inference_models:  # Persist inference model downloads
 
 networks:
   ai-search-network:

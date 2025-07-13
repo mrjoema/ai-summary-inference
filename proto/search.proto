@@ -15,6 +15,11 @@ service TokenizerService {
   rpc Tokenize(TokenizeRequest) returns (TokenizeResponse);
   rpc BatchTokenize(BatchTokenizeRequest) returns (BatchTokenizeResponse);
   rpc GetVocabularyInfo(VocabularyInfoRequest) returns (VocabularyInfoResponse);
+  
+  // Detokenization methods (industry standard)
+  rpc Detokenize(DetokenizeRequest) returns (DetokenizeResponse);
+  rpc BatchDetokenize(BatchDetokenizeRequest) returns (BatchDetokenizeResponse);
+  
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
@@ -117,6 +122,36 @@ message VocabularyInfoResponse {
   string model_name = 4;
 }
 
+// Detokenization messages (industry standard: token IDs -> text)
+message DetokenizeRequest {
+  repeated int32 token_ids = 1;
+  string model_name = 2;         // must match tokenization model
+  bool skip_special_tokens = 3;  // remove <s>, </s>, etc.
+  string request_id = 4;         // for tracking/caching
+}
+
+message DetokenizeResponse {
+  string text = 1;               // reconstructed text
+  int32 token_count = 2;         // number of tokens processed
+  string model_used = 3;
+  float processing_time_ms = 4;  // performance metrics
+  string cache_status = 5;       // "hit", "miss", "bypassed"
+  bool success = 6;
+  string error = 7;
+}
+
+message BatchDetokenizeRequest {
+  repeated DetokenizeRequest requests = 1;
+  int32 batch_size = 2;
+}
+
+message BatchDetokenizeResponse {
+  repeated DetokenizeResponse responses = 1;
+  float total_processing_time_ms = 2;
+  int32 cache_hits = 3;
+  int32 cache_misses = 4;
+}
+
 // Enhanced Inference messages (Industry Standard)
 message SummarizeRequest {
   repeated int32 token_ids = 1;     // PRIMARY: from tokenizer service
@@ -133,6 +168,7 @@ message SummarizeResponse {
   string error = 3;
   int32 tokens_used = 4;
   float confidence = 5;
+  repeated int32 generated_token_ids = 6;  // TOKEN-NATIVE: Generated tokens for detokenization
 }
 
 message SummarizeStreamResponse {
@@ -140,6 +176,7 @@ message SummarizeStreamResponse {
   bool is_final = 2;
   string error = 3;
   int32 position = 4;
+  int32 generated_token_id = 5;  // TOKEN-NATIVE: Token ID for streaming detokenization
 }
 
 // Safety messages

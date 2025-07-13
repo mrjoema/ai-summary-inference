@@ -1,0 +1,13 @@
+# Python Inference Service Dependencies
+grpcio==1.68.1
+grpcio-tools==1.68.1
+transformers==4.35.2
+torch==2.1.2
+psutil==6.1.1
+protobuf==5.28.3
+
+# For better performance on Mac Apple Silicon
+accelerate==0.24.1
+
+# Optional: for faster inference
+tokenizers==0.15.0

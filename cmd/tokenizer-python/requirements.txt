@@ -1,0 +1,13 @@
+# Python Tokenizer Service Dependencies
+grpcio==1.68.1
+grpcio-tools==1.68.1
+transformers==4.47.1
+torch==2.5.1
+redis==5.2.1
+protobuf==5.28.3
+
+# Optional: for faster tokenizers
+tokenizers>=0.15.0
+
+# For better performance on Mac
+accelerate>=1.2.1

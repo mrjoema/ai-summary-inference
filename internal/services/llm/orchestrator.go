@@ -242,20 +242,51 @@ func (o *LLMOrchestrator) processLLMRequest(processor *RequestProcessor, req *LL
 		processor.Cancel()
 	}()
 
-	// Step 1: Enterprise tokenization
-	tokenizeResp, err := o.performEnterpriseTokenization(processor.Ctx, req.Text, "llama3.2", req.MaxTokens)
+	// CLEAN TOKEN-NATIVE FLOW: tokenize → inference → detokenize
+	
+	// Step 1: Call tokenizer service to tokenize input text
+	tokenizeResp, err := o.performTokenization(processor.Ctx, req.Text, "facebook/bart-large-cnn", req.MaxTokens)
 	if err != nil {
-		log.Printf("Tokenization failed for request %s: %v, falling back to text-only", req.ID, err)
-		// Fallback to text-only processing
-		o.processBatchInference(processor, req, nil, "llama3.2")
+		log.Printf("Tokenization failed for request %s: %v", req.ID, err)
+		processor.Status = "failed"
+		processor.Error = fmt.Errorf("tokenization failed: %w", err)
 		return
 	}
 
-	log.Printf("Enterprise tokenization complete for %s: %d tokens (%.2fms, %s)", 
-		req.ID, tokenizeResp.TokenCount, tokenizeResp.ProcessingTimeMs, tokenizeResp.CacheStatus)
+	log.Printf("Step 1 complete - Tokenization: %d tokens (%.2fms, %s)", 
+		tokenizeResp.TokenCount, tokenizeResp.ProcessingTimeMs, tokenizeResp.CacheStatus)
 
-	// Step 2: Generate summary via batch inference with tokens
-	o.processBatchInference(processor, req, tokenizeResp.TokenIds, tokenizeResp.ModelUsed)
+	// Step 2: Call inference service with token IDs
+	inferenceResp, err := o.performInference(processor.Ctx, req, tokenizeResp.TokenIds, tokenizeResp.ModelUsed)
+	if err != nil {
+		log.Printf("Inference failed for request %s: %v", req.ID, err)
+		processor.Status = "failed"
+		processor.Error = fmt.Errorf("inference failed: %w", err)
+		return
+	}
+
+	log.Printf("Step 2 complete - Inference: generated summary")
+
+	// Step 3: Call tokenizer service to detokenize generated tokens (if any)
+	finalSummary := inferenceResp.Summary
+	if len(inferenceResp.GeneratedTokenIds) > 0 {
+		detokenizeResp, err := o.performDetokenization(processor.Ctx, inferenceResp.GeneratedTokenIds, tokenizeResp.ModelUsed)
+		if err != nil {
+			log.Printf("Detokenization failed for request %s: %v, using fallback text", req.ID, err)
+			// Use the summary text as fallback
+		} else {
+			log.Printf("Step 3 complete - Detokenization: %d chars", len(detokenizeResp.Text))
+			finalSummary = detokenizeResp.Text
+		}
+	}
+
+	// Complete response
+	processor.Status = "completed"
+	processor.Result = &LLMResponse{
+		ID:       req.ID,
+		Summary:  finalSummary,
+		Complete: true,
+	}
 }
 
 // processStreamingLLMRequest handles STREAMING LLM processing via direct gRPC
@@ -268,29 +299,32 @@ func (o *LLMOrchestrator) processStreamingLLMRequest(processor *RequestProcessor
 		processor.Cancel()
 	}()
 
-	// Step 1: Enterprise tokenization for streaming
-	tokenizeResp, err := o.performEnterpriseTokenization(processor.Ctx, req.Text, "llama3.2", req.MaxTokens)
+	// CLEAN TOKEN-NATIVE STREAMING FLOW: tokenize → inference → detokenize (streaming)
+	
+	// Step 1: Call tokenizer service to tokenize input text
+	tokenizeResp, err := o.performTokenization(processor.Ctx, req.Text, "facebook/bart-large-cnn", req.MaxTokens)
 	if err != nil {
-		log.Printf("Tokenization failed for streaming request %s: %v, falling back to text-only", req.ID, err)
-		// Fallback to text-only streaming
-		o.processStreamingInference(processor, req, streamCallback, nil, "llama3.2")
+		log.Printf("Tokenization failed for streaming request %s: %v", req.ID, err)
+		processor.Status = "failed"
+		processor.Error = fmt.Errorf("tokenization failed: %w", err)
+		streamCallback(req.ID, "", true, 0) // Send error signal
 		return
 	}
 
-	log.Printf("Enterprise tokenization complete for streaming %s: %d tokens (%.2fms, %s)", 
-		req.ID, tokenizeResp.TokenCount, tokenizeResp.ProcessingTimeMs, tokenizeResp.CacheStatus)
+	log.Printf("Step 1 complete - Streaming tokenization: %d tokens (%.2fms, %s)", 
+		tokenizeResp.TokenCount, tokenizeResp.ProcessingTimeMs, tokenizeResp.CacheStatus)
 
-	// Step 2: Generate summary via streaming inference with tokens
-	o.processStreamingInference(processor, req, streamCallback, tokenizeResp.TokenIds, tokenizeResp.ModelUsed)
+	// Step 2: Call inference service for streaming with token IDs
+	o.performStreamingInference(processor, req, streamCallback, tokenizeResp.TokenIds, tokenizeResp.ModelUsed)
 }
 
-// performEnterpriseTokenization calls the tokenizer service with complete prompt
-func (o *LLMOrchestrator) performEnterpriseTokenization(ctx context.Context, text, modelName string, maxTokens int32) (*pb.TokenizeResponse, error) {
-	// INDUSTRY STANDARD: Construct complete prompt with system instruction
+// performTokenization calls the tokenizer service to tokenize text
+func (o *LLMOrchestrator) performTokenization(ctx context.Context, text, modelName string, maxTokens int32) (*pb.TokenizeResponse, error) {
+	// Build complete prompt for summarization
 	completePrompt := o.buildSummarizationPrompt(text)
-	
+	log.Printf("Complete prompt: '%s' (max tokens: %d)", completePrompt, maxTokens)
 	return o.tokenizerClient.Tokenize(ctx, &pb.TokenizeRequest{
-		Text:                  completePrompt, // Complete prompt with instruction!
+		Text:                  completePrompt,
 		ModelName:            modelName,
 		MaxTokens:            maxTokens,
 		IncludeSpecialTokens: true,
@@ -298,42 +332,51 @@ func (o *LLMOrchestrator) performEnterpriseTokenization(ctx context.Context, tex
 	})
 }
 
-// buildSummarizationPrompt constructs the complete prompt for tokenization
-func (o *LLMOrchestrator) buildSummarizationPrompt(searchResults string) string {
-	// Industry standard prompt template for summarization
-	return fmt.Sprintf(`You are an AI assistant tasked with providing concise summaries. Please analyze the following search results and provide a clear, informative summary that captures the key points.
-
-Instructions:
-- Provide a concise summary in 2-3 sentences
-- Focus on the most important information
-- Use clear, concise language
-- Do not include speculation or information not present in the text
-
-Search Results to Summarize:
-%s
-
-Summary:`, searchResults)
+// performInference calls the inference service with token IDs
+func (o *LLMOrchestrator) performInference(ctx context.Context, req *LLMRequest, tokenIds []int32, modelName string) (*pb.SummarizeResponse, error) {
+	// Create inference request with tokens as primary input
+	inferenceReq := &pb.SummarizeRequest{
+		TokenIds:  tokenIds,
+		ModelName: modelName,
+		MaxLength: req.MaxTokens,
+		Streaming: false,
+		RequestId: req.ID,
+	}
+	
+	log.Printf("Calling inference service with %d tokens", len(tokenIds))
+	
+	return o.inferenceClient.Summarize(ctx, inferenceReq)
 }
 
-// processStreamingInference handles streaming inference via direct gRPC
-func (o *LLMOrchestrator) processStreamingInference(processor *RequestProcessor, req *LLMRequest, streamCallback func(string, string, bool, int32), tokenIds []int32, modelName string) {
-	// Industry standard: Create inference request with tokens as primary input
+// performDetokenization calls the tokenizer service to detokenize token IDs
+func (o *LLMOrchestrator) performDetokenization(ctx context.Context, tokenIds []int32, modelName string) (*pb.DetokenizeResponse, error) {
+	return o.tokenizerClient.Detokenize(ctx, &pb.DetokenizeRequest{
+		TokenIds:          tokenIds,
+		ModelName:         modelName,
+		SkipSpecialTokens: true, // Skip special tokens for clean output
+		RequestId:         fmt.Sprintf("detok_%d", time.Now().UnixNano()),
+	})
+}
+
+// buildSummarizationPrompt constructs the complete prompt for tokenization
+func (o *LLMOrchestrator) buildSummarizationPrompt(searchResults string) string {
+	// BART-optimized prompt - minimal instructions, focus on content
+	// BART works best with direct content for summarization
+	return searchResults
+}
+
+// performStreamingInference handles streaming inference via direct gRPC with tokens
+func (o *LLMOrchestrator) performStreamingInference(processor *RequestProcessor, req *LLMRequest, streamCallback func(string, string, bool, int32), tokenIds []int32, modelName string) {
+	// Create streaming inference request with tokens as input
 	inferenceReq := &pb.SummarizeRequest{
+		TokenIds:  tokenIds,
+		ModelName: modelName,
 		MaxLength: req.MaxTokens,
 		Streaming: true,
 		RequestId: req.ID,
 	}
 	
-	// PRIMARY PATH: Use enterprise tokenization (industry standard)
-	if len(tokenIds) > 0 {
-		inferenceReq.TokenIds = tokenIds
-		inferenceReq.ModelName = modelName
-		// NO original_text - tokens are the source of truth
-	} else {
-		// FALLBACK PATH: Text-only for legacy/debugging
-		inferenceReq.OriginalText = req.Text
-		inferenceReq.ModelName = "llama3.2" // default
-	}
+	log.Printf("Starting streaming inference with %d tokens", len(tokenIds))
 
 	stream, err := o.inferenceClient.SummarizeStream(processor.Ctx, inferenceReq)
 	if err != nil {
@@ -358,8 +401,23 @@ func (o *LLMOrchestrator) processStreamingInference(processor *RequestProcessor,
 			return
 		}
 
-		// Send token immediately via callback
-		streamCallback(req.ID, resp.Token, resp.IsFinal, resp.Position)
+		// TOKEN-NATIVE STREAMING: Detokenize token ID if available
+		finalToken := resp.Token
+		if resp.GeneratedTokenId != 0 && !resp.IsFinal {
+			// Call detokenizer for this single token ID
+			detokenizeResp, err := o.performDetokenization(processor.Ctx, []int32{resp.GeneratedTokenId}, modelName)
+			if err != nil {
+				log.Printf("Streaming detokenization failed for token %d: %v, using fallback", resp.GeneratedTokenId, err)
+				// Keep using the fallback token text from inference service
+			} else {
+				// Use the properly detokenized text
+				finalToken = detokenizeResp.Text
+				log.Printf("Detokenized streaming token %d: '%s'", resp.GeneratedTokenId, finalToken)
+			}
+		}
+
+		// Send token via callback (either detokenized or fallback)
+		streamCallback(req.ID, finalToken, resp.IsFinal, resp.Position)
 
 		if resp.IsFinal {
 			processor.Status = "completed"
@@ -368,41 +426,6 @@ func (o *LLMOrchestrator) processStreamingInference(processor *RequestProcessor,
 	}
 }
 
-// processBatchInference handles batch inference via direct gRPC
-func (o *LLMOrchestrator) processBatchInference(processor *RequestProcessor, req *LLMRequest, tokenIds []int32, modelName string) {
-	// Industry standard: Create inference request with tokens as primary input
-	inferenceReq := &pb.SummarizeRequest{
-		MaxLength: req.MaxTokens,
-		Streaming: false,
-		RequestId: req.ID,
-	}
-	
-	// PRIMARY PATH: Use enterprise tokenization (industry standard)
-	if len(tokenIds) > 0 {
-		inferenceReq.TokenIds = tokenIds
-		inferenceReq.ModelName = modelName
-		// NO original_text - tokens are the source of truth
-	} else {
-		// FALLBACK PATH: Text-only for legacy/debugging
-		inferenceReq.OriginalText = req.Text
-		inferenceReq.ModelName = "llama3.2" // default
-	}
-
-	resp, err := o.inferenceClient.Summarize(processor.Ctx, inferenceReq)
-	if err != nil {
-		processor.Status = "failed"
-		processor.Error = fmt.Errorf("batch inference failed: %w", err)
-		return
-	}
-	
-	// Complete response
-	processor.Status = "completed"
-	processor.Result = &LLMResponse{
-		ID:       req.ID,
-		Summary:  resp.Summary,
-		Complete: true,
-	}
-}
 
 // GetStats returns orchestrator statistics
 func (o *LLMOrchestrator) GetStats() map[string]interface{} {

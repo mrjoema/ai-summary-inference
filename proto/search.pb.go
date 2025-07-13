@@ -740,6 +740,287 @@ func (x *VocabularyInfoResponse) GetModelName() string {
 	return ""
 }
 
+// Detokenization messages (industry standard: token IDs -> text)
+type DetokenizeRequest struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	TokenIds          []int32                `protobuf:"varint,1,rep,packed,name=token_ids,json=tokenIds,proto3" json:"token_ids,omitempty"`
+	ModelName         string                 `protobuf:"bytes,2,opt,name=model_name,json=modelName,proto3" json:"model_name,omitempty"`                            // must match tokenization model
+	SkipSpecialTokens bool                   `protobuf:"varint,3,opt,name=skip_special_tokens,json=skipSpecialTokens,proto3" json:"skip_special_tokens,omitempty"` // remove <s>, </s>, etc.
+	RequestId         string                 `protobuf:"bytes,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`                            // for tracking/caching
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DetokenizeRequest) Reset() {
+	*x = DetokenizeRequest{}
+	mi := &file_proto_search_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DetokenizeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DetokenizeRequest) ProtoMessage() {}
+
+func (x *DetokenizeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DetokenizeRequest.ProtoReflect.Descriptor instead.
+func (*DetokenizeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DetokenizeRequest) GetTokenIds() []int32 {
+	if x != nil {
+		return x.TokenIds
+	}
+	return nil
+}
+
+func (x *DetokenizeRequest) GetModelName() string {
+	if x != nil {
+		return x.ModelName
+	}
+	return ""
+}
+
+func (x *DetokenizeRequest) GetSkipSpecialTokens() bool {
+	if x != nil {
+		return x.SkipSpecialTokens
+	}
+	return false
+}
+
+func (x *DetokenizeRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+type DetokenizeResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Text             string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`                                // reconstructed text
+	TokenCount       int32                  `protobuf:"varint,2,opt,name=token_count,json=tokenCount,proto3" json:"token_count,omitempty"` // number of tokens processed
+	ModelUsed        string                 `protobuf:"bytes,3,opt,name=model_used,json=modelUsed,proto3" json:"model_used,omitempty"`
+	ProcessingTimeMs float32                `protobuf:"fixed32,4,opt,name=processing_time_ms,json=processingTimeMs,proto3" json:"processing_time_ms,omitempty"` // performance metrics
+	CacheStatus      string                 `protobuf:"bytes,5,opt,name=cache_status,json=cacheStatus,proto3" json:"cache_status,omitempty"`                    // "hit", "miss", "bypassed"
+	Success          bool                   `protobuf:"varint,6,opt,name=success,proto3" json:"success,omitempty"`
+	Error            string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DetokenizeResponse) Reset() {
+	*x = DetokenizeResponse{}
+	mi := &file_proto_search_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DetokenizeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DetokenizeResponse) ProtoMessage() {}
+
+func (x *DetokenizeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DetokenizeResponse.ProtoReflect.Descriptor instead.
+func (*DetokenizeResponse) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DetokenizeResponse) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *DetokenizeResponse) GetTokenCount() int32 {
+	if x != nil {
+		return x.TokenCount
+	}
+	return 0
+}
+
+func (x *DetokenizeResponse) GetModelUsed() string {
+	if x != nil {
+		return x.ModelUsed
+	}
+	return ""
+}
+
+func (x *DetokenizeResponse) GetProcessingTimeMs() float32 {
+	if x != nil {
+		return x.ProcessingTimeMs
+	}
+	return 0
+}
+
+func (x *DetokenizeResponse) GetCacheStatus() string {
+	if x != nil {
+		return x.CacheStatus
+	}
+	return ""
+}
+
+func (x *DetokenizeResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DetokenizeResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type BatchDetokenizeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requests      []*DetokenizeRequest   `protobuf:"bytes,1,rep,name=requests,proto3" json:"requests,omitempty"`
+	BatchSize     int32                  `protobuf:"varint,2,opt,name=batch_size,json=batchSize,proto3" json:"batch_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BatchDetokenizeRequest) Reset() {
+	*x = BatchDetokenizeRequest{}
+	mi := &file_proto_search_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchDetokenizeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchDetokenizeRequest) ProtoMessage() {}
+
+func (x *BatchDetokenizeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchDetokenizeRequest.ProtoReflect.Descriptor instead.
+func (*BatchDetokenizeRequest) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *BatchDetokenizeRequest) GetRequests() []*DetokenizeRequest {
+	if x != nil {
+		return x.Requests
+	}
+	return nil
+}
+
+func (x *BatchDetokenizeRequest) GetBatchSize() int32 {
+	if x != nil {
+		return x.BatchSize
+	}
+	return 0
+}
+
+type BatchDetokenizeResponse struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Responses             []*DetokenizeResponse  `protobuf:"bytes,1,rep,name=responses,proto3" json:"responses,omitempty"`
+	TotalProcessingTimeMs float32                `protobuf:"fixed32,2,opt,name=total_processing_time_ms,json=totalProcessingTimeMs,proto3" json:"total_processing_time_ms,omitempty"`
+	CacheHits             int32                  `protobuf:"varint,3,opt,name=cache_hits,json=cacheHits,proto3" json:"cache_hits,omitempty"`
+	CacheMisses           int32                  `protobuf:"varint,4,opt,name=cache_misses,json=cacheMisses,proto3" json:"cache_misses,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *BatchDetokenizeResponse) Reset() {
+	*x = BatchDetokenizeResponse{}
+	mi := &file_proto_search_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BatchDetokenizeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BatchDetokenizeResponse) ProtoMessage() {}
+
+func (x *BatchDetokenizeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BatchDetokenizeResponse.ProtoReflect.Descriptor instead.
+func (*BatchDetokenizeResponse) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *BatchDetokenizeResponse) GetResponses() []*DetokenizeResponse {
+	if x != nil {
+		return x.Responses
+	}
+	return nil
+}
+
+func (x *BatchDetokenizeResponse) GetTotalProcessingTimeMs() float32 {
+	if x != nil {
+		return x.TotalProcessingTimeMs
+	}
+	return 0
+}
+
+func (x *BatchDetokenizeResponse) GetCacheHits() int32 {
+	if x != nil {
+		return x.CacheHits
+	}
+	return 0
+}
+
+func (x *BatchDetokenizeResponse) GetCacheMisses() int32 {
+	if x != nil {
+		return x.CacheMisses
+	}
+	return 0
+}
+
 // Enhanced Inference messages (Industry Standard)
 type SummarizeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -755,7 +1036,7 @@ type SummarizeRequest struct {
 
 func (x *SummarizeRequest) Reset() {
 	*x = SummarizeRequest{}
-	mi := &file_proto_search_proto_msgTypes[11]
+	mi := &file_proto_search_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -767,7 +1048,7 @@ func (x *SummarizeRequest) String() string {
 func (*SummarizeRequest) ProtoMessage() {}
 
 func (x *SummarizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[11]
+	mi := &file_proto_search_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -780,7 +1061,7 @@ func (x *SummarizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummarizeRequest.ProtoReflect.Descriptor instead.
 func (*SummarizeRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{11}
+	return file_proto_search_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SummarizeRequest) GetTokenIds() []int32 {
@@ -826,19 +1107,20 @@ func (x *SummarizeRequest) GetOriginalText() string {
 }
 
 type SummarizeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Summary       string                 `protobuf:"bytes,1,opt,name=summary,proto3" json:"summary,omitempty"`
-	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
-	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-	TokensUsed    int32                  `protobuf:"varint,4,opt,name=tokens_used,json=tokensUsed,proto3" json:"tokens_used,omitempty"`
-	Confidence    float32                `protobuf:"fixed32,5,opt,name=confidence,proto3" json:"confidence,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Summary           string                 `protobuf:"bytes,1,opt,name=summary,proto3" json:"summary,omitempty"`
+	Success           bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	Error             string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	TokensUsed        int32                  `protobuf:"varint,4,opt,name=tokens_used,json=tokensUsed,proto3" json:"tokens_used,omitempty"`
+	Confidence        float32                `protobuf:"fixed32,5,opt,name=confidence,proto3" json:"confidence,omitempty"`
+	GeneratedTokenIds []int32                `protobuf:"varint,6,rep,packed,name=generated_token_ids,json=generatedTokenIds,proto3" json:"generated_token_ids,omitempty"` // TOKEN-NATIVE: Generated tokens for detokenization
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *SummarizeResponse) Reset() {
 	*x = SummarizeResponse{}
-	mi := &file_proto_search_proto_msgTypes[12]
+	mi := &file_proto_search_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -850,7 +1132,7 @@ func (x *SummarizeResponse) String() string {
 func (*SummarizeResponse) ProtoMessage() {}
 
 func (x *SummarizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[12]
+	mi := &file_proto_search_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -863,7 +1145,7 @@ func (x *SummarizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummarizeResponse.ProtoReflect.Descriptor instead.
 func (*SummarizeResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{12}
+	return file_proto_search_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SummarizeResponse) GetSummary() string {
@@ -901,19 +1183,27 @@ func (x *SummarizeResponse) GetConfidence() float32 {
 	return 0
 }
 
+func (x *SummarizeResponse) GetGeneratedTokenIds() []int32 {
+	if x != nil {
+		return x.GeneratedTokenIds
+	}
+	return nil
+}
+
 type SummarizeStreamResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	IsFinal       bool                   `protobuf:"varint,2,opt,name=is_final,json=isFinal,proto3" json:"is_final,omitempty"`
-	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-	Position      int32                  `protobuf:"varint,4,opt,name=position,proto3" json:"position,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Token            string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	IsFinal          bool                   `protobuf:"varint,2,opt,name=is_final,json=isFinal,proto3" json:"is_final,omitempty"`
+	Error            string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	Position         int32                  `protobuf:"varint,4,opt,name=position,proto3" json:"position,omitempty"`
+	GeneratedTokenId int32                  `protobuf:"varint,5,opt,name=generated_token_id,json=generatedTokenId,proto3" json:"generated_token_id,omitempty"` // TOKEN-NATIVE: Token ID for streaming detokenization
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *SummarizeStreamResponse) Reset() {
 	*x = SummarizeStreamResponse{}
-	mi := &file_proto_search_proto_msgTypes[13]
+	mi := &file_proto_search_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -925,7 +1215,7 @@ func (x *SummarizeStreamResponse) String() string {
 func (*SummarizeStreamResponse) ProtoMessage() {}
 
 func (x *SummarizeStreamResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[13]
+	mi := &file_proto_search_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +1228,7 @@ func (x *SummarizeStreamResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummarizeStreamResponse.ProtoReflect.Descriptor instead.
 func (*SummarizeStreamResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{13}
+	return file_proto_search_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SummarizeStreamResponse) GetToken() string {
@@ -969,6 +1259,13 @@ func (x *SummarizeStreamResponse) GetPosition() int32 {
 	return 0
 }
 
+func (x *SummarizeStreamResponse) GetGeneratedTokenId() int32 {
+	if x != nil {
+		return x.GeneratedTokenId
+	}
+	return 0
+}
+
 // Safety messages
 type ValidateInputRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -981,7 +1278,7 @@ type ValidateInputRequest struct {
 
 func (x *ValidateInputRequest) Reset() {
 	*x = ValidateInputRequest{}
-	mi := &file_proto_search_proto_msgTypes[14]
+	mi := &file_proto_search_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -993,7 +1290,7 @@ func (x *ValidateInputRequest) String() string {
 func (*ValidateInputRequest) ProtoMessage() {}
 
 func (x *ValidateInputRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[14]
+	mi := &file_proto_search_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1006,7 +1303,7 @@ func (x *ValidateInputRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateInputRequest.ProtoReflect.Descriptor instead.
 func (*ValidateInputRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{14}
+	return file_proto_search_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ValidateInputRequest) GetText() string {
@@ -1042,7 +1339,7 @@ type ValidateInputResponse struct {
 
 func (x *ValidateInputResponse) Reset() {
 	*x = ValidateInputResponse{}
-	mi := &file_proto_search_proto_msgTypes[15]
+	mi := &file_proto_search_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1054,7 +1351,7 @@ func (x *ValidateInputResponse) String() string {
 func (*ValidateInputResponse) ProtoMessage() {}
 
 func (x *ValidateInputResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[15]
+	mi := &file_proto_search_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1067,7 +1364,7 @@ func (x *ValidateInputResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateInputResponse.ProtoReflect.Descriptor instead.
 func (*ValidateInputResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{15}
+	return file_proto_search_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ValidateInputResponse) GetIsSafe() bool {
@@ -1107,7 +1404,7 @@ type SanitizeOutputRequest struct {
 
 func (x *SanitizeOutputRequest) Reset() {
 	*x = SanitizeOutputRequest{}
-	mi := &file_proto_search_proto_msgTypes[16]
+	mi := &file_proto_search_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1119,7 +1416,7 @@ func (x *SanitizeOutputRequest) String() string {
 func (*SanitizeOutputRequest) ProtoMessage() {}
 
 func (x *SanitizeOutputRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[16]
+	mi := &file_proto_search_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1132,7 +1429,7 @@ func (x *SanitizeOutputRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SanitizeOutputRequest.ProtoReflect.Descriptor instead.
 func (*SanitizeOutputRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{16}
+	return file_proto_search_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *SanitizeOutputRequest) GetText() string {
@@ -1153,7 +1450,7 @@ type SanitizeOutputResponse struct {
 
 func (x *SanitizeOutputResponse) Reset() {
 	*x = SanitizeOutputResponse{}
-	mi := &file_proto_search_proto_msgTypes[17]
+	mi := &file_proto_search_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1165,7 +1462,7 @@ func (x *SanitizeOutputResponse) String() string {
 func (*SanitizeOutputResponse) ProtoMessage() {}
 
 func (x *SanitizeOutputResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[17]
+	mi := &file_proto_search_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1178,7 +1475,7 @@ func (x *SanitizeOutputResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SanitizeOutputResponse.ProtoReflect.Descriptor instead.
 func (*SanitizeOutputResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{17}
+	return file_proto_search_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SanitizeOutputResponse) GetSanitizedText() string {
@@ -1216,7 +1513,7 @@ type LLMRequest struct {
 
 func (x *LLMRequest) Reset() {
 	*x = LLMRequest{}
-	mi := &file_proto_search_proto_msgTypes[18]
+	mi := &file_proto_search_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1228,7 +1525,7 @@ func (x *LLMRequest) String() string {
 func (*LLMRequest) ProtoMessage() {}
 
 func (x *LLMRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[18]
+	mi := &file_proto_search_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1241,7 +1538,7 @@ func (x *LLMRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LLMRequest.ProtoReflect.Descriptor instead.
 func (*LLMRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{18}
+	return file_proto_search_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *LLMRequest) GetId() string {
@@ -1292,7 +1589,7 @@ type LLMResponse struct {
 
 func (x *LLMResponse) Reset() {
 	*x = LLMResponse{}
-	mi := &file_proto_search_proto_msgTypes[19]
+	mi := &file_proto_search_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1304,7 +1601,7 @@ func (x *LLMResponse) String() string {
 func (*LLMResponse) ProtoMessage() {}
 
 func (x *LLMResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[19]
+	mi := &file_proto_search_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1317,7 +1614,7 @@ func (x *LLMResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LLMResponse.ProtoReflect.Descriptor instead.
 func (*LLMResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{19}
+	return file_proto_search_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *LLMResponse) GetId() string {
@@ -1364,7 +1661,7 @@ type LLMStatusRequest struct {
 
 func (x *LLMStatusRequest) Reset() {
 	*x = LLMStatusRequest{}
-	mi := &file_proto_search_proto_msgTypes[20]
+	mi := &file_proto_search_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1376,7 +1673,7 @@ func (x *LLMStatusRequest) String() string {
 func (*LLMStatusRequest) ProtoMessage() {}
 
 func (x *LLMStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[20]
+	mi := &file_proto_search_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1389,7 +1686,7 @@ func (x *LLMStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LLMStatusRequest.ProtoReflect.Descriptor instead.
 func (*LLMStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{20}
+	return file_proto_search_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *LLMStatusRequest) GetRequestId() string {
@@ -1412,7 +1709,7 @@ type LLMStatusResponse struct {
 
 func (x *LLMStatusResponse) Reset() {
 	*x = LLMStatusResponse{}
-	mi := &file_proto_search_proto_msgTypes[21]
+	mi := &file_proto_search_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1424,7 +1721,7 @@ func (x *LLMStatusResponse) String() string {
 func (*LLMStatusResponse) ProtoMessage() {}
 
 func (x *LLMStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[21]
+	mi := &file_proto_search_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1437,7 +1734,7 @@ func (x *LLMStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LLMStatusResponse.ProtoReflect.Descriptor instead.
 func (*LLMStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{21}
+	return file_proto_search_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *LLMStatusResponse) GetRequestId() string {
@@ -1488,7 +1785,7 @@ type LLMStreamResponse struct {
 
 func (x *LLMStreamResponse) Reset() {
 	*x = LLMStreamResponse{}
-	mi := &file_proto_search_proto_msgTypes[22]
+	mi := &file_proto_search_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1500,7 +1797,7 @@ func (x *LLMStreamResponse) String() string {
 func (*LLMStreamResponse) ProtoMessage() {}
 
 func (x *LLMStreamResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[22]
+	mi := &file_proto_search_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1513,7 +1810,7 @@ func (x *LLMStreamResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LLMStreamResponse.ProtoReflect.Descriptor instead.
 func (*LLMStreamResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{22}
+	return file_proto_search_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *LLMStreamResponse) GetId() string {
@@ -1620,7 +1917,34 @@ const file_proto_search_proto_rawDesc = "" +
 	"\x0especial_tokens\x18\x02 \x03(\tR\rspecialTokens\x12#\n" +
 	"\rencoding_name\x18\x03 \x01(\tR\fencodingName\x12\x1d\n" +
 	"\n" +
-	"model_name\x18\x04 \x01(\tR\tmodelName\"\xcf\x01\n" +
+	"model_name\x18\x04 \x01(\tR\tmodelName\"\x9e\x01\n" +
+	"\x11DetokenizeRequest\x12\x1b\n" +
+	"\ttoken_ids\x18\x01 \x03(\x05R\btokenIds\x12\x1d\n" +
+	"\n" +
+	"model_name\x18\x02 \x01(\tR\tmodelName\x12.\n" +
+	"\x13skip_special_tokens\x18\x03 \x01(\bR\x11skipSpecialTokens\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x04 \x01(\tR\trequestId\"\xe9\x01\n" +
+	"\x12DetokenizeResponse\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1f\n" +
+	"\vtoken_count\x18\x02 \x01(\x05R\n" +
+	"tokenCount\x12\x1d\n" +
+	"\n" +
+	"model_used\x18\x03 \x01(\tR\tmodelUsed\x12,\n" +
+	"\x12processing_time_ms\x18\x04 \x01(\x02R\x10processingTimeMs\x12!\n" +
+	"\fcache_status\x18\x05 \x01(\tR\vcacheStatus\x12\x18\n" +
+	"\asuccess\x18\x06 \x01(\bR\asuccess\x12\x14\n" +
+	"\x05error\x18\a \x01(\tR\x05error\"n\n" +
+	"\x16BatchDetokenizeRequest\x125\n" +
+	"\brequests\x18\x01 \x03(\v2\x19.search.DetokenizeRequestR\brequests\x12\x1d\n" +
+	"\n" +
+	"batch_size\x18\x02 \x01(\x05R\tbatchSize\"\xce\x01\n" +
+	"\x17BatchDetokenizeResponse\x128\n" +
+	"\tresponses\x18\x01 \x03(\v2\x1a.search.DetokenizeResponseR\tresponses\x127\n" +
+	"\x18total_processing_time_ms\x18\x02 \x01(\x02R\x15totalProcessingTimeMs\x12\x1d\n" +
+	"\n" +
+	"cache_hits\x18\x03 \x01(\x05R\tcacheHits\x12!\n" +
+	"\fcache_misses\x18\x04 \x01(\x05R\vcacheMisses\"\xcf\x01\n" +
 	"\x10SummarizeRequest\x12\x1b\n" +
 	"\ttoken_ids\x18\x01 \x03(\x05R\btokenIds\x12\x1d\n" +
 	"\n" +
@@ -1630,7 +1954,7 @@ const file_proto_search_proto_rawDesc = "" +
 	"max_length\x18\x04 \x01(\x05R\tmaxLength\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x05 \x01(\tR\trequestId\x12#\n" +
-	"\roriginal_text\x18\x06 \x01(\tR\foriginalText\"\x9e\x01\n" +
+	"\roriginal_text\x18\x06 \x01(\tR\foriginalText\"\xce\x01\n" +
 	"\x11SummarizeResponse\x12\x18\n" +
 	"\asummary\x18\x01 \x01(\tR\asummary\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x14\n" +
@@ -1639,12 +1963,14 @@ const file_proto_search_proto_rawDesc = "" +
 	"tokensUsed\x12\x1e\n" +
 	"\n" +
 	"confidence\x18\x05 \x01(\x02R\n" +
-	"confidence\"|\n" +
+	"confidence\x12.\n" +
+	"\x13generated_token_ids\x18\x06 \x03(\x05R\x11generatedTokenIds\"\xaa\x01\n" +
 	"\x17SummarizeStreamResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x19\n" +
 	"\bis_final\x18\x02 \x01(\bR\aisFinal\x12\x14\n" +
 	"\x05error\x18\x03 \x01(\tR\x05error\x12\x1a\n" +
-	"\bposition\x18\x04 \x01(\x05R\bposition\"h\n" +
+	"\bposition\x18\x04 \x01(\x05R\bposition\x12,\n" +
+	"\x12generated_token_id\x18\x05 \x01(\x05R\x10generatedTokenId\"h\n" +
 	"\x14ValidateInputRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tclient_ip\x18\x02 \x01(\tR\bclientIp\x12\x1f\n" +
@@ -1694,11 +2020,14 @@ const file_proto_search_proto_rawDesc = "" +
 	"\bposition\x18\x05 \x01(\x05R\bposition2\x90\x01\n" +
 	"\rSearchService\x127\n" +
 	"\x06Search\x12\x15.search.SearchRequest\x1a\x16.search.SearchResponse\x12F\n" +
-	"\vHealthCheck\x12\x1a.search.HealthCheckRequest\x1a\x1b.search.HealthCheckResponse2\xbb\x02\n" +
+	"\vHealthCheck\x12\x1a.search.HealthCheckRequest\x1a\x1b.search.HealthCheckResponse2\xd4\x03\n" +
 	"\x10TokenizerService\x12=\n" +
 	"\bTokenize\x12\x17.search.TokenizeRequest\x1a\x18.search.TokenizeResponse\x12L\n" +
 	"\rBatchTokenize\x12\x1c.search.BatchTokenizeRequest\x1a\x1d.search.BatchTokenizeResponse\x12R\n" +
-	"\x11GetVocabularyInfo\x12\x1d.search.VocabularyInfoRequest\x1a\x1e.search.VocabularyInfoResponse\x12F\n" +
+	"\x11GetVocabularyInfo\x12\x1d.search.VocabularyInfoRequest\x1a\x1e.search.VocabularyInfoResponse\x12C\n" +
+	"\n" +
+	"Detokenize\x12\x19.search.DetokenizeRequest\x1a\x1a.search.DetokenizeResponse\x12R\n" +
+	"\x0fBatchDetokenize\x12\x1e.search.BatchDetokenizeRequest\x1a\x1f.search.BatchDetokenizeResponse\x12F\n" +
 	"\vHealthCheck\x12\x1a.search.HealthCheckRequest\x1a\x1b.search.HealthCheckResponse2\xec\x01\n" +
 	"\x10InferenceService\x12@\n" +
 	"\tSummarize\x12\x18.search.SummarizeRequest\x1a\x19.search.SummarizeResponse\x12N\n" +
@@ -1726,7 +2055,7 @@ func file_proto_search_proto_rawDescGZIP() []byte {
 	return file_proto_search_proto_rawDescData
 }
 
-var file_proto_search_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_proto_search_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_proto_search_proto_goTypes = []any{
 	(*HealthCheckRequest)(nil),      // 0: search.HealthCheckRequest
 	(*HealthCheckResponse)(nil),     // 1: search.HealthCheckResponse
@@ -1739,60 +2068,70 @@ var file_proto_search_proto_goTypes = []any{
 	(*BatchTokenizeResponse)(nil),   // 8: search.BatchTokenizeResponse
 	(*VocabularyInfoRequest)(nil),   // 9: search.VocabularyInfoRequest
 	(*VocabularyInfoResponse)(nil),  // 10: search.VocabularyInfoResponse
-	(*SummarizeRequest)(nil),        // 11: search.SummarizeRequest
-	(*SummarizeResponse)(nil),       // 12: search.SummarizeResponse
-	(*SummarizeStreamResponse)(nil), // 13: search.SummarizeStreamResponse
-	(*ValidateInputRequest)(nil),    // 14: search.ValidateInputRequest
-	(*ValidateInputResponse)(nil),   // 15: search.ValidateInputResponse
-	(*SanitizeOutputRequest)(nil),   // 16: search.SanitizeOutputRequest
-	(*SanitizeOutputResponse)(nil),  // 17: search.SanitizeOutputResponse
-	(*LLMRequest)(nil),              // 18: search.LLMRequest
-	(*LLMResponse)(nil),             // 19: search.LLMResponse
-	(*LLMStatusRequest)(nil),        // 20: search.LLMStatusRequest
-	(*LLMStatusResponse)(nil),       // 21: search.LLMStatusResponse
-	(*LLMStreamResponse)(nil),       // 22: search.LLMStreamResponse
+	(*DetokenizeRequest)(nil),       // 11: search.DetokenizeRequest
+	(*DetokenizeResponse)(nil),      // 12: search.DetokenizeResponse
+	(*BatchDetokenizeRequest)(nil),  // 13: search.BatchDetokenizeRequest
+	(*BatchDetokenizeResponse)(nil), // 14: search.BatchDetokenizeResponse
+	(*SummarizeRequest)(nil),        // 15: search.SummarizeRequest
+	(*SummarizeResponse)(nil),       // 16: search.SummarizeResponse
+	(*SummarizeStreamResponse)(nil), // 17: search.SummarizeStreamResponse
+	(*ValidateInputRequest)(nil),    // 18: search.ValidateInputRequest
+	(*ValidateInputResponse)(nil),   // 19: search.ValidateInputResponse
+	(*SanitizeOutputRequest)(nil),   // 20: search.SanitizeOutputRequest
+	(*SanitizeOutputResponse)(nil),  // 21: search.SanitizeOutputResponse
+	(*LLMRequest)(nil),              // 22: search.LLMRequest
+	(*LLMResponse)(nil),             // 23: search.LLMResponse
+	(*LLMStatusRequest)(nil),        // 24: search.LLMStatusRequest
+	(*LLMStatusResponse)(nil),       // 25: search.LLMStatusResponse
+	(*LLMStreamResponse)(nil),       // 26: search.LLMStreamResponse
 }
 var file_proto_search_proto_depIdxs = []int32{
 	4,  // 0: search.SearchResponse.results:type_name -> search.SearchResult
 	5,  // 1: search.BatchTokenizeRequest.requests:type_name -> search.TokenizeRequest
 	6,  // 2: search.BatchTokenizeResponse.responses:type_name -> search.TokenizeResponse
-	2,  // 3: search.SearchService.Search:input_type -> search.SearchRequest
-	0,  // 4: search.SearchService.HealthCheck:input_type -> search.HealthCheckRequest
-	5,  // 5: search.TokenizerService.Tokenize:input_type -> search.TokenizeRequest
-	7,  // 6: search.TokenizerService.BatchTokenize:input_type -> search.BatchTokenizeRequest
-	9,  // 7: search.TokenizerService.GetVocabularyInfo:input_type -> search.VocabularyInfoRequest
-	0,  // 8: search.TokenizerService.HealthCheck:input_type -> search.HealthCheckRequest
-	11, // 9: search.InferenceService.Summarize:input_type -> search.SummarizeRequest
-	11, // 10: search.InferenceService.SummarizeStream:input_type -> search.SummarizeRequest
-	0,  // 11: search.InferenceService.HealthCheck:input_type -> search.HealthCheckRequest
-	14, // 12: search.SafetyService.ValidateInput:input_type -> search.ValidateInputRequest
-	16, // 13: search.SafetyService.SanitizeOutput:input_type -> search.SanitizeOutputRequest
-	0,  // 14: search.SafetyService.HealthCheck:input_type -> search.HealthCheckRequest
-	18, // 15: search.LLMOrchestratorService.ProcessRequest:input_type -> search.LLMRequest
-	18, // 16: search.LLMOrchestratorService.StreamRequest:input_type -> search.LLMRequest
-	20, // 17: search.LLMOrchestratorService.GetStatus:input_type -> search.LLMStatusRequest
-	0,  // 18: search.LLMOrchestratorService.HealthCheck:input_type -> search.HealthCheckRequest
-	3,  // 19: search.SearchService.Search:output_type -> search.SearchResponse
-	1,  // 20: search.SearchService.HealthCheck:output_type -> search.HealthCheckResponse
-	6,  // 21: search.TokenizerService.Tokenize:output_type -> search.TokenizeResponse
-	8,  // 22: search.TokenizerService.BatchTokenize:output_type -> search.BatchTokenizeResponse
-	10, // 23: search.TokenizerService.GetVocabularyInfo:output_type -> search.VocabularyInfoResponse
-	1,  // 24: search.TokenizerService.HealthCheck:output_type -> search.HealthCheckResponse
-	12, // 25: search.InferenceService.Summarize:output_type -> search.SummarizeResponse
-	13, // 26: search.InferenceService.SummarizeStream:output_type -> search.SummarizeStreamResponse
-	1,  // 27: search.InferenceService.HealthCheck:output_type -> search.HealthCheckResponse
-	15, // 28: search.SafetyService.ValidateInput:output_type -> search.ValidateInputResponse
-	17, // 29: search.SafetyService.SanitizeOutput:output_type -> search.SanitizeOutputResponse
-	1,  // 30: search.SafetyService.HealthCheck:output_type -> search.HealthCheckResponse
-	19, // 31: search.LLMOrchestratorService.ProcessRequest:output_type -> search.LLMResponse
-	22, // 32: search.LLMOrchestratorService.StreamRequest:output_type -> search.LLMStreamResponse
-	21, // 33: search.LLMOrchestratorService.GetStatus:output_type -> search.LLMStatusResponse
-	1,  // 34: search.LLMOrchestratorService.HealthCheck:output_type -> search.HealthCheckResponse
-	19, // [19:35] is the sub-list for method output_type
-	3,  // [3:19] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	11, // 3: search.BatchDetokenizeRequest.requests:type_name -> search.DetokenizeRequest
+	12, // 4: search.BatchDetokenizeResponse.responses:type_name -> search.DetokenizeResponse
+	2,  // 5: search.SearchService.Search:input_type -> search.SearchRequest
+	0,  // 6: search.SearchService.HealthCheck:input_type -> search.HealthCheckRequest
+	5,  // 7: search.TokenizerService.Tokenize:input_type -> search.TokenizeRequest
+	7,  // 8: search.TokenizerService.BatchTokenize:input_type -> search.BatchTokenizeRequest
+	9,  // 9: search.TokenizerService.GetVocabularyInfo:input_type -> search.VocabularyInfoRequest
+	11, // 10: search.TokenizerService.Detokenize:input_type -> search.DetokenizeRequest
+	13, // 11: search.TokenizerService.BatchDetokenize:input_type -> search.BatchDetokenizeRequest
+	0,  // 12: search.TokenizerService.HealthCheck:input_type -> search.HealthCheckRequest
+	15, // 13: search.InferenceService.Summarize:input_type -> search.SummarizeRequest
+	15, // 14: search.InferenceService.SummarizeStream:input_type -> search.SummarizeRequest
+	0,  // 15: search.InferenceService.HealthCheck:input_type -> search.HealthCheckRequest
+	18, // 16: search.SafetyService.ValidateInput:input_type -> search.ValidateInputRequest
+	20, // 17: search.SafetyService.SanitizeOutput:input_type -> search.SanitizeOutputRequest
+	0,  // 18: search.SafetyService.HealthCheck:input_type -> search.HealthCheckRequest
+	22, // 19: search.LLMOrchestratorService.ProcessRequest:input_type -> search.LLMRequest
+	22, // 20: search.LLMOrchestratorService.StreamRequest:input_type -> search.LLMRequest
+	24, // 21: search.LLMOrchestratorService.GetStatus:input_type -> search.LLMStatusRequest
+	0,  // 22: search.LLMOrchestratorService.HealthCheck:input_type -> search.HealthCheckRequest
+	3,  // 23: search.SearchService.Search:output_type -> search.SearchResponse
+	1,  // 24: search.SearchService.HealthCheck:output_type -> search.HealthCheckResponse
+	6,  // 25: search.TokenizerService.Tokenize:output_type -> search.TokenizeResponse
+	8,  // 26: search.TokenizerService.BatchTokenize:output_type -> search.BatchTokenizeResponse
+	10, // 27: search.TokenizerService.GetVocabularyInfo:output_type -> search.VocabularyInfoResponse
+	12, // 28: search.TokenizerService.Detokenize:output_type -> search.DetokenizeResponse
+	14, // 29: search.TokenizerService.BatchDetokenize:output_type -> search.BatchDetokenizeResponse
+	1,  // 30: search.TokenizerService.HealthCheck:output_type -> search.HealthCheckResponse
+	16, // 31: search.InferenceService.Summarize:output_type -> search.SummarizeResponse
+	17, // 32: search.InferenceService.SummarizeStream:output_type -> search.SummarizeStreamResponse
+	1,  // 33: search.InferenceService.HealthCheck:output_type -> search.HealthCheckResponse
+	19, // 34: search.SafetyService.ValidateInput:output_type -> search.ValidateInputResponse
+	21, // 35: search.SafetyService.SanitizeOutput:output_type -> search.SanitizeOutputResponse
+	1,  // 36: search.SafetyService.HealthCheck:output_type -> search.HealthCheckResponse
+	23, // 37: search.LLMOrchestratorService.ProcessRequest:output_type -> search.LLMResponse
+	26, // 38: search.LLMOrchestratorService.StreamRequest:output_type -> search.LLMStreamResponse
+	25, // 39: search.LLMOrchestratorService.GetStatus:output_type -> search.LLMStatusResponse
+	1,  // 40: search.LLMOrchestratorService.HealthCheck:output_type -> search.HealthCheckResponse
+	23, // [23:41] is the sub-list for method output_type
+	5,  // [5:23] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_proto_search_proto_init() }
@@ -1806,7 +2145,7 @@ func file_proto_search_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_search_proto_rawDesc), len(file_proto_search_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   5,
 		},

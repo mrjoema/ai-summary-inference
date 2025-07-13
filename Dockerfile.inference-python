@@ -1,0 +1,52 @@
+# Python Inference Service Dockerfile
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY cmd/inference-python/requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy protobuf files and generate Python bindings
+COPY proto/ ./proto/
+RUN python -m grpc_tools.protoc \
+    --proto_path=./proto \
+    --python_out=./proto \
+    --grpc_python_out=./proto \
+    ./proto/search.proto
+
+# Copy inference service
+COPY cmd/inference-python/main.py .
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV TRANSFORMERS_CACHE=/app/models
+ENV HF_HOME=/app/models
+ENV INFERENCE_MODEL=facebook/bart-large-cnn
+
+# Create model cache directory
+RUN mkdir -p /app/models
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD python -c "import grpc; import proto.search_pb2_grpc as pb2_grpc; import proto.search_pb2 as pb2; \
+    channel = grpc.insecure_channel('localhost:8083'); \
+    stub = pb2_grpc.InferenceServiceStub(channel); \
+    response = stub.HealthCheck(pb2.HealthCheckRequest()); \
+    exit(0 if response.status in ['healthy', 'degraded'] else 1)"
+
+# Expose gRPC port
+EXPOSE 8083
+
+# Run the service
+CMD ["python", "main.py"]

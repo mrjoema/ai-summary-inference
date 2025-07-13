@@ -166,6 +166,8 @@ const (
 	TokenizerService_Tokenize_FullMethodName          = "/search.TokenizerService/Tokenize"
 	TokenizerService_BatchTokenize_FullMethodName     = "/search.TokenizerService/BatchTokenize"
 	TokenizerService_GetVocabularyInfo_FullMethodName = "/search.TokenizerService/GetVocabularyInfo"
+	TokenizerService_Detokenize_FullMethodName        = "/search.TokenizerService/Detokenize"
+	TokenizerService_BatchDetokenize_FullMethodName   = "/search.TokenizerService/BatchDetokenize"
 	TokenizerService_HealthCheck_FullMethodName       = "/search.TokenizerService/HealthCheck"
 )
 
@@ -178,6 +180,9 @@ type TokenizerServiceClient interface {
 	Tokenize(ctx context.Context, in *TokenizeRequest, opts ...grpc.CallOption) (*TokenizeResponse, error)
 	BatchTokenize(ctx context.Context, in *BatchTokenizeRequest, opts ...grpc.CallOption) (*BatchTokenizeResponse, error)
 	GetVocabularyInfo(ctx context.Context, in *VocabularyInfoRequest, opts ...grpc.CallOption) (*VocabularyInfoResponse, error)
+	// Detokenization methods (industry standard)
+	Detokenize(ctx context.Context, in *DetokenizeRequest, opts ...grpc.CallOption) (*DetokenizeResponse, error)
+	BatchDetokenize(ctx context.Context, in *BatchDetokenizeRequest, opts ...grpc.CallOption) (*BatchDetokenizeResponse, error)
 	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 }
 
@@ -219,6 +224,26 @@ func (c *tokenizerServiceClient) GetVocabularyInfo(ctx context.Context, in *Voca
 	return out, nil
 }
 
+func (c *tokenizerServiceClient) Detokenize(ctx context.Context, in *DetokenizeRequest, opts ...grpc.CallOption) (*DetokenizeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DetokenizeResponse)
+	err := c.cc.Invoke(ctx, TokenizerService_Detokenize_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *tokenizerServiceClient) BatchDetokenize(ctx context.Context, in *BatchDetokenizeRequest, opts ...grpc.CallOption) (*BatchDetokenizeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchDetokenizeResponse)
+	err := c.cc.Invoke(ctx, TokenizerService_BatchDetokenize_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *tokenizerServiceClient) HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(HealthCheckResponse)
@@ -238,6 +263,9 @@ type TokenizerServiceServer interface {
 	Tokenize(context.Context, *TokenizeRequest) (*TokenizeResponse, error)
 	BatchTokenize(context.Context, *BatchTokenizeRequest) (*BatchTokenizeResponse, error)
 	GetVocabularyInfo(context.Context, *VocabularyInfoRequest) (*VocabularyInfoResponse, error)
+	// Detokenization methods (industry standard)
+	Detokenize(context.Context, *DetokenizeRequest) (*DetokenizeResponse, error)
+	BatchDetokenize(context.Context, *BatchDetokenizeRequest) (*BatchDetokenizeResponse, error)
 	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
 	mustEmbedUnimplementedTokenizerServiceServer()
 }
@@ -257,6 +285,12 @@ func (UnimplementedTokenizerServiceServer) BatchTokenize(context.Context, *Batch
 }
 func (UnimplementedTokenizerServiceServer) GetVocabularyInfo(context.Context, *VocabularyInfoRequest) (*VocabularyInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVocabularyInfo not implemented")
+}
+func (UnimplementedTokenizerServiceServer) Detokenize(context.Context, *DetokenizeRequest) (*DetokenizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Detokenize not implemented")
+}
+func (UnimplementedTokenizerServiceServer) BatchDetokenize(context.Context, *BatchDetokenizeRequest) (*BatchDetokenizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchDetokenize not implemented")
 }
 func (UnimplementedTokenizerServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
@@ -336,6 +370,42 @@ func _TokenizerService_GetVocabularyInfo_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TokenizerService_Detokenize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetokenizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TokenizerServiceServer).Detokenize(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TokenizerService_Detokenize_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TokenizerServiceServer).Detokenize(ctx, req.(*DetokenizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TokenizerService_BatchDetokenize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchDetokenizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TokenizerServiceServer).BatchDetokenize(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TokenizerService_BatchDetokenize_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TokenizerServiceServer).BatchDetokenize(ctx, req.(*BatchDetokenizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _TokenizerService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HealthCheckRequest)
 	if err := dec(in); err != nil {
@@ -372,6 +442,14 @@ var TokenizerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVocabularyInfo",
 			Handler:    _TokenizerService_GetVocabularyInfo_Handler,
+		},
+		{
+			MethodName: "Detokenize",
+			Handler:    _TokenizerService_Detokenize_Handler,
+		},
+		{
+			MethodName: "BatchDetokenize",
+			Handler:    _TokenizerService_BatchDetokenize_Handler,
 		},
 		{
 			MethodName: "HealthCheck",
