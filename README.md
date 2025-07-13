@@ -27,6 +27,12 @@ A high-performance, scalable AI-powered search engine built with Go microservice
 - ✅ **Local Development**: Simple one-command setup for development and testing
 - ✅ **Production Ready**: Docker containers, health checks, comprehensive monitoring
 
+## 🎬 Demo
+
+![AI Inference Demo](ai-inference-demo.gif)
+
+*Real-time AI-powered search with streaming responses and enterprise-grade inference*
+
 ## 🚀 Quick Start
 
 ### Prerequisites
