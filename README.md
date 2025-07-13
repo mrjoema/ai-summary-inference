@@ -1,23 +1,28 @@
 # AI Search Engine with Microservices Architecture
 
-A high-performance, scalable AI-powered search engine built with Go microservices, designed for production deployment with comprehensive fault tolerance, backpressure handling, and modern streaming architecture.
+A high-performance, scalable AI-powered search engine built with Go microservices, designed for production deployment with comprehensive fault tolerance, enterprise-grade AI inference, and modern streaming architecture.
 
 ## 🏗️ Architecture Overview
 
 ### Microservices Architecture
-- **Gateway Service**: HTTP API gateway with Server-Sent Events (SSE) streaming
-- **Search Service**: Google Custom Search API integration with fallback mock data
-- **Tokenizer Service**: CPU-intensive text tokenization (optimized for CPU resources)
-- **Inference Service**: GPU-intensive AI model inference (optimized for GPU resources)
-- **Safety Service**: Input validation and output sanitization
-- **Redis**: Caching and session management
+- **Gateway Service** (Port 8080): HTTP API gateway with Server-Sent Events (SSE) streaming
+- **Search Service** (Port 8081): Google Custom Search API integration with fallback mock data
+- **Tokenizer Service** (Port 8082): Enterprise-grade CPU-intensive text tokenization
+- **Inference Service** (Port 8083): GPU-intensive AI model inference with vLLM integration
+- **Safety Service** (Port 8084): Input validation and output sanitization
+- **LLM Orchestrator Service** (Port 8085): Coordinates tokenization and inference workflows
+- **vLLM Engine** (Port 8000): Enterprise token-native AI inference engine
+- **Ollama Engine** (Port 11434): Fallback AI inference engine for development
+- **Redis** (Port 6379): Caching and session management
 
 ### Key Features
+- ✅ **Enterprise AI Inference**: vLLM integration with token-native processing
+- ✅ **LLM Orchestration**: Dedicated service for coordinating AI workflows
 - ✅ **Safety-first**: Comprehensive input validation and output sanitization
 - ✅ **Streaming Support**: Real-time AI summary generation with Server-Sent Events (SSE)
 - ✅ **Non-blocking**: Search results appear immediately while AI summary generates
 - ✅ **Fault Tolerant**: Circuit breakers, graceful degradation, and retry mechanisms
-- ✅ **Backpressure Handling**: Intelligent load balancing and queue management
+- ✅ **Direct gRPC Streaming**: High-performance service-to-service communication
 - ✅ **Microservices**: Separate CPU and GPU intensive services for optimal resource allocation
 - ✅ **Kubernetes Ready**: Full K8s deployment with auto-scaling (HPA)
 - ✅ **Local Development**: Simple one-command setup for development and testing
@@ -80,6 +85,7 @@ make run-service SERVICE=search
 make run-service SERVICE=tokenizer
 make run-service SERVICE=inference
 make run-service SERVICE=safety
+make run-service SERVICE=llm
 ```
 
 ### Testing
@@ -114,6 +120,7 @@ make port-forward
 ### Scaling Configuration
 - **Tokenizer**: 2-10 replicas (CPU intensive)
 - **Inference**: 1-5 replicas (GPU intensive)
+- **LLM Orchestrator**: 2-5 replicas (Coordination service)
 - **Gateway**: 2-8 replicas (Load balancing)
 - **Search**: 2-6 replicas (API rate limiting)
 - **Safety**: 2 replicas (Fast response)
@@ -192,6 +199,9 @@ curl http://localhost:8083/metrics    # Inference metrics (includes GPU)
 curl http://localhost:8081/metrics    # Search metrics
 curl http://localhost:8082/metrics    # Tokenizer metrics (CPU intensive)
 curl http://localhost:8084/metrics    # Safety metrics
+curl http://localhost:8085/metrics    # LLM Orchestrator metrics
+curl http://localhost:8000/metrics    # vLLM Engine metrics
+curl http://localhost:11434/metrics  # Ollama Engine metrics
 
 # Monitoring dashboards
 http://localhost:3000                 # Grafana (admin/admin)
@@ -353,12 +363,19 @@ Use monitoring data to make scaling decisions:
 - **Scalability**: Independent scaling based on load
 - **Fault Isolation**: Service failures don't affect others
 - **Technology Diversity**: Can use different tech stacks per service
+- **LLM Orchestration**: Dedicated service for managing AI workflows
 
 ### Communication Patterns
 - **Internal Services**: gRPC for high-performance service-to-service communication
 - **Client Streaming**: Server-Sent Events (SSE) for real-time updates to web clients
-- **Backpressure**: Built-in gRPC streaming backpressure for flow control
-- **No Message Queues**: Simplified architecture with direct gRPC streaming between services
+- **Direct gRPC Streaming**: Eliminated Redis queues for better performance and lower latency
+- **Token-Native Processing**: Enterprise-grade tokenization with vLLM integration
+
+### Enterprise AI Infrastructure
+- **vLLM Engine**: Primary inference engine with token-native processing
+- **Ollama Fallback**: Development and testing inference engine
+- **LLM Orchestrator**: Coordinates tokenization → inference workflows
+- **Enterprise Tokenization**: Advanced tokenization with caching and batch processing
 
 ### Fault Tolerance & Resilience
 - **Circuit Breakers**: Prevent cascading failures across services
@@ -376,6 +393,9 @@ kubectl scale deployment tokenizer --replicas=5 -n ai-search
 
 # GPU-intensive services (scale based on GPU availability)
 kubectl scale deployment inference --replicas=3 -n ai-search
+
+# LLM orchestration (scale based on request volume)
+kubectl scale deployment llm-orchestrator --replicas=5 -n ai-search
 
 # Load balancing services (scale based on request volume)
 kubectl scale deployment gateway --replicas=8 -n ai-search
@@ -409,7 +429,8 @@ ai-search-service/
 │   ├── search/            # Search service
 │   ├── tokenizer/         # Tokenizer service
 │   ├── inference/         # Inference service
-│   └── safety/            # Safety service
+│   ├── safety/            # Safety service
+│   └── llm/               # LLM orchestrator service
 ├── internal/              # Internal packages
 │   ├── config/           # Configuration management
 │   ├── logger/           # Logging utilities
@@ -599,27 +620,46 @@ This system implements industry-standard streaming patterns optimized for AI inf
        ▲                   │                   │
        │                   ▼                   ▼
        │            ┌─────────────┐    ┌─────────────┐
-       │            │  Tokenizer  │    │    Redis    │
-       │            │   Service   │    │   Cache     │
+       │            │     LLM     │    │    Redis    │
+       │            │Orchestrator │    │   Cache     │
        │            └─────────────┘    └─────────────┘
        │                   │
        │                   ▼
-       │            ┌─────────────┐
-       └────────────│  Inference  │
-         (Streaming)│   Service   │
-                    └─────────────┘
+       │            ┌─────────────┐    ┌─────────────┐
+       │            │  Tokenizer  │───▶│    vLLM     │
+       │            │   Service   │    │   Engine    │
+       │            └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   ▼                   ▼
+       │            ┌─────────────┐    ┌─────────────┐
+       └────────────│  Inference  │───▶│   Ollama    │
+         (Streaming)│   Service   │    │ (Fallback)  │
+                    └─────────────┘    └─────────────┘
 ```
+
+### Enterprise AI Processing Flow
+1. **Client Request**: HTTP/SSE to Gateway
+2. **Gateway**: Routes to LLM Orchestrator via gRPC
+3. **LLM Orchestrator**: Coordinates the AI workflow:
+   - Sends text to Tokenizer Service (CPU-optimized)
+   - Receives token IDs from Tokenizer
+   - Sends tokens to Inference Service (GPU-optimized)
+   - Inference Service calls vLLM engine with tokens
+4. **Real-time Streaming**: Tokens stream back through the chain
+5. **Client**: Receives real-time token stream via SSE
 
 ### Why This Architecture?
 - **SSE for Clients**: Universal browser support, simple debugging
 - **gRPC Internal**: High-performance service-to-service communication
+- **Direct Streaming**: Real-time token streaming from vLLM to client
+- **Token-Native**: Enterprise-grade tokenization with vLLM integration
 - **No Message Queues**: Simplified operations, lower latency
-- **Direct Streaming**: Real-time token streaming from inference to client
 
 ### Industry Alignment
 - **OpenAI Pattern**: Similar to ChatGPT's streaming architecture
 - **Cloud Native**: Follows CNCF best practices for microservices
 - **Production Proven**: Based on patterns used by major AI companies
+- **vLLM Integration**: Uses industry-standard inference engine
 
 ## 🙏 Acknowledgments
 
@@ -627,4 +667,5 @@ This system implements industry-standard streaming patterns optimized for AI inf
 - Designed for Kubernetes deployment with cloud-native patterns
 - Optimized for both local development and production scaling
 - Inspired by modern AI inference architectures (OpenAI, Anthropic)
-- Follows industry best practices for fault tolerance and observability 
+- Follows industry best practices for fault tolerance and observability
+- Integrates vLLM for enterprise-grade AI inference 
