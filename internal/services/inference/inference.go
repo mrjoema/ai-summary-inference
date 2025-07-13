@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"ai-search-service/internal/config"
@@ -13,12 +14,27 @@ import (
 	pb "ai-search-service/proto"
 )
 
+// RequestContext tracks individual inference requests for concurrency control
+type RequestContext struct {
+	ID        string
+	Ctx       context.Context
+	Cancel    context.CancelFunc
+	StartTime time.Time
+	Status    string // "processing", "completed", "failed"
+}
+
 type InferenceService struct {
 	pb.UnimplementedInferenceServiceServer
 	config     *config.Config
 	httpClient *http.Client
 	metrics    *monitoring.MetricsCollector
 	vllmEngine *VLLMEngine  // Enterprise token-native engine
+	
+	// Concurrency control
+	activeRequests    map[string]*RequestContext
+	requestsMutex     sync.RWMutex
+	maxConcurrentReqs int
+	requestTimeout    time.Duration
 }
 
 
@@ -32,19 +48,64 @@ func NewInferenceService(cfg *config.Config) (*InferenceService, error) {
 	// Initialize enterprise vLLM engine
 	vllmEngine := NewVLLMEngine(cfg)
 
+	// Set concurrent request limits
+	maxConcurrentReqs := 8 // Default: reasonable limit for inference operations
+	requestTimeout := time.Minute * 2 // Default: 2 minutes per request
+
 	return &InferenceService{
 		config: cfg,
 		httpClient: &http.Client{
 			Timeout: cfg.VLLM.Timeout,
 		},
-		metrics:    metricsCollector,
-		vllmEngine: vllmEngine,
+		metrics:           metricsCollector,
+		vllmEngine:        vllmEngine,
+		activeRequests:    make(map[string]*RequestContext),
+		maxConcurrentReqs: maxConcurrentReqs,
+		requestTimeout:    requestTimeout,
 	}, nil
 }
 
 func (i *InferenceService) Summarize(ctx context.Context, req *pb.SummarizeRequest) (*pb.SummarizeResponse, error) {
 	start := time.Now()
 	log := logger.GetLogger()
+
+	// Check concurrent request limit
+	i.requestsMutex.RLock()
+	activeCount := len(i.activeRequests)
+	i.requestsMutex.RUnlock()
+
+	if activeCount >= i.maxConcurrentReqs {
+		log.Warnf("Inference service at capacity: %d/%d active requests", activeCount, i.maxConcurrentReqs)
+		return nil, fmt.Errorf("inference service at capacity (%d/%d active requests)", activeCount, i.maxConcurrentReqs)
+	}
+
+	// Create request context for tracking
+	requestID := fmt.Sprintf("inf_%d", time.Now().UnixNano())
+	requestCtx, cancel := context.WithTimeout(ctx, i.requestTimeout)
+	defer cancel()
+
+	reqContext := &RequestContext{
+		ID:        requestID,
+		Ctx:       requestCtx,
+		Cancel:    cancel,
+		StartTime: start,
+		Status:    "processing",
+	}
+
+	// Track the request
+	i.requestsMutex.Lock()
+	i.activeRequests[requestID] = reqContext
+	i.requestsMutex.Unlock()
+
+	// Ensure cleanup on completion
+	defer func() {
+		i.requestsMutex.Lock()
+		delete(i.activeRequests, requestID)
+		i.requestsMutex.Unlock()
+		log.Infof("Inference request %s completed, active: %d/%d", requestID, len(i.activeRequests), i.maxConcurrentReqs)
+	}()
+
+	log.Infof("Processing inference request %s (active: %d/%d)", requestID, activeCount+1, i.maxConcurrentReqs)
 
 	var modelName string
 	var summary string
@@ -55,7 +116,7 @@ func (i *InferenceService) Summarize(ctx context.Context, req *pb.SummarizeReque
 			len(req.TokenIds), req.ModelName)
 		
 		// INDUSTRY STANDARD: Send tokens directly to vLLM (NO text conversion!)
-		result, err := i.vllmEngine.GenerateFromTokens(ctx, req.TokenIds, req.ModelName, int(req.MaxLength))
+		result, err := i.vllmEngine.GenerateFromTokens(requestCtx, req.TokenIds, req.ModelName, int(req.MaxLength))
 		modelName = req.ModelName
 		
 		if err != nil {
@@ -91,6 +152,44 @@ func (i *InferenceService) SummarizeStream(req *pb.SummarizeRequest, stream pb.I
 	start := time.Now()
 	log := logger.GetLogger()
 
+	// Check concurrent request limit
+	i.requestsMutex.RLock()
+	activeCount := len(i.activeRequests)
+	i.requestsMutex.RUnlock()
+
+	if activeCount >= i.maxConcurrentReqs {
+		log.Warnf("Inference service at capacity: %d/%d active requests", activeCount, i.maxConcurrentReqs)
+		return fmt.Errorf("inference service at capacity (%d/%d active requests)", activeCount, i.maxConcurrentReqs)
+	}
+
+	// Create request context for tracking
+	requestID := fmt.Sprintf("inf_stream_%d", time.Now().UnixNano())
+	requestCtx, cancel := context.WithTimeout(stream.Context(), i.requestTimeout)
+	defer cancel()
+
+	reqContext := &RequestContext{
+		ID:        requestID,
+		Ctx:       requestCtx,
+		Cancel:    cancel,
+		StartTime: start,
+		Status:    "processing",
+	}
+
+	// Track the request
+	i.requestsMutex.Lock()
+	i.activeRequests[requestID] = reqContext
+	i.requestsMutex.Unlock()
+
+	// Ensure cleanup on completion
+	defer func() {
+		i.requestsMutex.Lock()
+		delete(i.activeRequests, requestID)
+		i.requestsMutex.Unlock()
+		log.Infof("Streaming inference request %s completed, active: %d/%d", requestID, len(i.activeRequests), i.maxConcurrentReqs)
+	}()
+
+	log.Infof("Processing streaming inference request %s (active: %d/%d)", requestID, activeCount+1, i.maxConcurrentReqs)
+
 	var modelName string
 
 	// INDUSTRY STANDARD: Token-native streaming vs fallback
@@ -101,7 +200,7 @@ func (i *InferenceService) SummarizeStream(req *pb.SummarizeRequest, stream pb.I
 		modelName = req.ModelName
 		
 		// INDUSTRY STANDARD: Stream tokens directly from vLLM
-		err := i.streamVLLMTokens(stream.Context(), req.TokenIds, req.ModelName, int(req.MaxLength), stream)
+		err := i.streamVLLMTokens(requestCtx, req.TokenIds, req.ModelName, int(req.MaxLength), stream)
 		if err != nil {
 			log.Errorf("vLLM token streaming failed: %v", err)
 			monitoring.RecordRequest("inference", "vllm_stream", "error")
@@ -254,4 +353,74 @@ func (i *InferenceService) generateMockSummary(originalText string, maxLength in
 	}
 
 	return summary
+}
+
+// GetActiveRequestCount returns the current number of active requests
+func (i *InferenceService) GetActiveRequestCount() int {
+	i.requestsMutex.RLock()
+	defer i.requestsMutex.RUnlock()
+	return len(i.activeRequests)
+}
+
+// GetRequestStatus returns the status of a specific request
+func (i *InferenceService) GetRequestStatus(requestID string) (*RequestContext, bool) {
+	i.requestsMutex.RLock()
+	defer i.requestsMutex.RUnlock()
+	req, exists := i.activeRequests[requestID]
+	return req, exists
+}
+
+// CancelRequest cancels a specific request
+func (i *InferenceService) CancelRequest(requestID string) bool {
+	i.requestsMutex.Lock()
+	defer i.requestsMutex.Unlock()
+	
+	if req, exists := i.activeRequests[requestID]; exists {
+		req.Cancel()
+		req.Status = "cancelled"
+		delete(i.activeRequests, requestID)
+		return true
+	}
+	return false
+}
+
+// CleanupStaleRequests removes requests that have exceeded timeout
+func (i *InferenceService) CleanupStaleRequests() int {
+	i.requestsMutex.Lock()
+	defer i.requestsMutex.Unlock()
+	
+	cleaned := 0
+	now := time.Now()
+	
+	for id, req := range i.activeRequests {
+		if now.Sub(req.StartTime) > i.requestTimeout {
+			req.Cancel()
+			req.Status = "timeout"
+			delete(i.activeRequests, id)
+			cleaned++
+		}
+	}
+	
+	return cleaned
+}
+
+// GetInferenceStats returns statistics about the inference service
+func (i *InferenceService) GetInferenceStats() map[string]interface{} {
+	i.requestsMutex.RLock()
+	defer i.requestsMutex.RUnlock()
+	
+	processing := 0
+	for _, req := range i.activeRequests {
+		if req.Status == "processing" {
+			processing++
+		}
+	}
+	
+	return map[string]interface{}{
+		"active_requests":     len(i.activeRequests),
+		"max_concurrent":      i.maxConcurrentReqs,
+		"processing_requests": processing,
+		"utilization_percent": float64(len(i.activeRequests)) / float64(i.maxConcurrentReqs) * 100,
+		"request_timeout_ms":  i.requestTimeout.Milliseconds(),
+	}
 }
