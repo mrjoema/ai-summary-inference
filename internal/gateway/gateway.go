@@ -231,7 +231,7 @@ func (g *Gateway) searchWithStreaming(c *gin.Context, start time.Time) {
 	g.processAndStreamSearch(c, query, safeSearch, numResults)
 }
 
-// searchWithoutStreaming handles non-streaming requests with immediate JSON response
+// searchWithoutStreaming handles non-streaming requests with immediate search results
 func (g *Gateway) searchWithoutStreaming(c *gin.Context, start time.Time) {
 	var req SearchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -250,8 +250,8 @@ func (g *Gateway) searchWithoutStreaming(c *gin.Context, start time.Time) {
 		return
 	}
 	
-	// Process search synchronously and return complete result
-	result := g.processSearchSync(req)
+	// Process search and return results immediately (search results first, summary later)
+	result := g.processSearchResultsFirst(req)
 	
 	// Record metrics
 	monitoring.RecordRequest("gateway", "search", "success")
@@ -466,12 +466,12 @@ func (g *Gateway) processAndStreamSearch(c *gin.Context, query string, safeSearc
 	}
 }
 
-// processSearchSync handles non-streaming search with complete response
-func (g *Gateway) processSearchSync(req SearchRequest) SearchResponse {
+// processSearchResultsFirst returns search results immediately, starts AI summary generation in background
+func (g *Gateway) processSearchResultsFirst(req SearchRequest) SearchResponse {
 	ctx := context.Background()
 	log := logger.GetLogger()
 	
-	// Validate input
+	// Step 1: Validate input
 	safetyResp, err := g.safetyClient.ValidateInput(ctx, &pb.ValidateInputRequest{
 		Text:       req.Query,
 		ClientIp:   "",
@@ -494,7 +494,7 @@ func (g *Gateway) processSearchSync(req SearchRequest) SearchResponse {
 		}
 	}
 	
-	// Perform search
+	// Step 2: Perform search and return results immediately
 	searchResp, err := g.searchClient.Search(ctx, &pb.SearchRequest{
 		Query:      safetyResp.SanitizedText,
 		SafeSearch: req.SafeSearch,
@@ -528,7 +528,9 @@ func (g *Gateway) processSearchSync(req SearchRequest) SearchResponse {
 		}
 	}
 	
-	// Get AI summary synchronously
+	log.Infof("🔍 Search results ready for non-streaming mode, now generating AI summary...")
+	
+	// Step 3: Generate AI summary (like streaming mode, but return complete response)
 	var textToSummarize string
 	for _, result := range searchResults {
 		textToSummarize += result.Title + " " + result.Snippet + " "
@@ -536,65 +538,59 @@ func (g *Gateway) processSearchSync(req SearchRequest) SearchResponse {
 	
 	// Submit LLM request
 	llmReq := &pb.LLMRequest{
-		Id:        fmt.Sprintf("sync_%d", time.Now().UnixNano()),
+		Id:        fmt.Sprintf("nonstream_%d", time.Now().UnixNano()),
 		Text:      textToSummarize,
 		MaxTokens: 150,
-		Stream:    false,
+		Stream:    false, // Non-streaming summary
 		CreatedAt: time.Now().Unix(),
 	}
 	
 	response, err := g.llmClient.ProcessRequest(ctx, llmReq)
+	var summary string
 	if err != nil {
 		log.Errorf("Failed to process LLM request: %v", err)
-		return SearchResponse{
-			Query:         req.Query,
-			Status:        "completed",
-			SearchResults: searchResults,
-			Error:         "AI summarization failed",
-		}
-	}
-	
-	var summary string
-	if response.Error != "" {
-		log.Infof("LLM response has error: %s", response.Error)
-		summary = "Summary unavailable"
+		summary = "AI summarization failed"
 	} else {
-		rawSummary := response.Summary
-		if rawSummary == "" {
-			// Reconstruct from tokens
-			for _, token := range response.Tokens {
-				rawSummary += token
-			}
-		}
-		
-		log.Errorf("DEBUG: SAFETY: Starting output sanitization for summary of length %d", len(rawSummary))
-		
-		// CRITICAL: Sanitize AI output before returning to user
-		safetyCtx, safetyCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer safetyCancel()
-		
-		sanitizeResp, err := g.safetyClient.SanitizeOutput(safetyCtx, &pb.SanitizeOutputRequest{
-			Text: rawSummary,
-		})
-		if err != nil {
-			log.Errorf("Output sanitization failed: %v", err)
-			summary = "Summary unavailable due to safety processing error"
+		if response.Error != "" {
+			log.Infof("LLM response has error: %s", response.Error)
+			summary = "Summary unavailable"
 		} else {
-			log.Errorf("DEBUG: SAFETY: Output sanitization completed, warnings: %d", len(sanitizeResp.Warnings))
-			summary = sanitizeResp.SanitizedText
-			if len(sanitizeResp.Warnings) > 0 {
-				log.Warnf("AI output sanitized with warnings: %v", sanitizeResp.Warnings)
+			rawSummary := response.Summary
+			if rawSummary == "" {
+				// Reconstruct from tokens
+				for _, token := range response.Tokens {
+					rawSummary += token
+				}
+			}
+			
+			// CRITICAL: Sanitize AI output before returning to user
+			safetyCtx, safetyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer safetyCancel()
+			
+			sanitizeResp, err := g.safetyClient.SanitizeOutput(safetyCtx, &pb.SanitizeOutputRequest{
+				Text: rawSummary,
+			})
+			
+			if err != nil {
+				log.Errorf("Failed to sanitize AI output: %v", err)
+				summary = "Summary sanitization failed"
+			} else {
+				summary = sanitizeResp.SanitizedText
 			}
 		}
 	}
 	
+	log.Infof("✅ Non-streaming mode completed with search results AND AI summary")
+	
+	// Return complete response with both search results and summary
 	return SearchResponse{
 		Query:         req.Query,
 		Status:        "completed",
 		SearchResults: searchResults,
-		Summary:       summary,
+		Summary:       summary, // Include AI summary in response
 	}
 }
+
 
 // checkSystemCapacity checks if the system can handle more requests
 func (g *Gateway) checkSystemCapacity() bool {
