@@ -17,13 +17,13 @@
 # Go workspace file
 go.work
 
-# Built binaries (from Makefile)
-gateway
-search
-inference
-llm
-safety
-tokenizer
+# Built binaries (from Makefile) - Be specific to avoid excluding source dirs
+/gateway
+/search
+/inference
+/llm
+/safety
+/tokenizer
 
 # IDE files
 .vscode/
@@ -116,10 +116,3 @@ scripts/dev-*
 *.crt
 api-keys/
 certs/
-
-gateway
-search
-inference
-llm
-safety
-tokenizer
