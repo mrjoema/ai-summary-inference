@@ -284,15 +284,35 @@ func (o *LLMOrchestrator) processStreamingLLMRequest(processor *RequestProcessor
 	o.processStreamingInference(processor, req, streamCallback, tokenizeResp.TokenIds, tokenizeResp.ModelUsed)
 }
 
-// performEnterpriseTokenization calls the tokenizer service
+// performEnterpriseTokenization calls the tokenizer service with complete prompt
 func (o *LLMOrchestrator) performEnterpriseTokenization(ctx context.Context, text, modelName string, maxTokens int32) (*pb.TokenizeResponse, error) {
+	// INDUSTRY STANDARD: Construct complete prompt with system instruction
+	completePrompt := o.buildSummarizationPrompt(text)
+	
 	return o.tokenizerClient.Tokenize(ctx, &pb.TokenizeRequest{
-		Text:                  text,
+		Text:                  completePrompt, // Complete prompt with instruction!
 		ModelName:            modelName,
 		MaxTokens:            maxTokens,
 		IncludeSpecialTokens: true,
 		RequestId:            fmt.Sprintf("llm_%d", time.Now().UnixNano()),
 	})
+}
+
+// buildSummarizationPrompt constructs the complete prompt for tokenization
+func (o *LLMOrchestrator) buildSummarizationPrompt(searchResults string) string {
+	// Industry standard prompt template for summarization
+	return fmt.Sprintf(`You are an AI assistant tasked with providing concise summaries. Please analyze the following search results and provide a clear, informative summary that captures the key points.
+
+Instructions:
+- Provide a concise summary in 2-3 sentences
+- Focus on the most important information
+- Use clear, concise language
+- Do not include speculation or information not present in the text
+
+Search Results to Summarize:
+%s
+
+Summary:`, searchResults)
 }
 
 // processStreamingInference handles streaming inference via direct gRPC

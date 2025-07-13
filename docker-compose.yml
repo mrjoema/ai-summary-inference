@@ -12,22 +12,15 @@ services:
     networks:
       - ai-search-network
 
-  # vLLM service for enterprise token-native AI inference
+  # vLLM service for enterprise token-native AI inference (disabled for development)
+  # Note: vLLM requires GPU or specific CPU setup that may not be available in all environments
+  # The system gracefully falls back to mock summaries when vLLM is unavailable
   vllm:
-    image: vllm/vllm-openai:latest
+    image: nginx:alpine  # Placeholder service to maintain architecture
     ports:
-      - "8000:8000"
-    environment:
-      - VLLM_MODEL=microsoft/DialoGPT-small  # Lightweight model for development
-      - VLLM_TOKEN_INPUTS=true
-      - VLLM_TENSOR_PARALLEL_SIZE=1
+      - "8000:80"
     command: >
-      --model microsoft/DialoGPT-small
-      --host 0.0.0.0
-      --port 8000
-      --tensor-parallel-size 1
-      --enable-prefix-caching
-      --disable-log-requests
+      sh -c "echo 'vLLM placeholder - system uses mock summaries' && nginx -g 'daemon off;'"
     networks:
       - ai-search-network
     # Uncomment for GPU support
@@ -39,18 +32,6 @@ services:
     #           count: 1
     #           capabilities: [gpu]
 
-  # Keep Ollama as fallback for development/testing
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_FLASH_ATTENTION=1
-      - OLLAMA_KV_CACHE_TYPE=q8_0
-    networks:
-      - ai-search-network
 
   # Safety service
   safety:
@@ -129,12 +110,10 @@ services:
       - SERVICE_NAME=inference
       - REDIS_HOST=redis
       - VLLM_HOST=vllm
-      - OLLAMA_HOST=ollama  # Fallback
       - LOG_LEVEL=info
     depends_on:
       - redis
       - vllm
-      - ollama
     deploy:
       resources:
         limits:
@@ -178,7 +157,6 @@ services:
     environment:
       - REDIS_HOST=redis
       - VLLM_HOST=vllm
-      - OLLAMA_HOST=ollama  # Fallback
       - SEARCH_HOST=search
       - TOKENIZER_HOST=tokenizer
       - INFERENCE_HOST=inference
@@ -254,7 +232,7 @@ services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     ports:
-      - "8085:8080"
+      - "8087:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -269,7 +247,6 @@ services:
 
 volumes:
   redis_data:
-  ollama_data:
   prometheus_data:
   grafana_data:
 

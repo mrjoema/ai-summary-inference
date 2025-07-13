@@ -94,23 +94,6 @@ var (
 		[]string{"service", "model", "streaming"},
 	)
 
-	// Ollama-specific metrics
-	OllamaRequestsTotal = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "ai_search_ollama_requests_total",
-			Help: "Total number of requests to Ollama",
-		},
-		[]string{"service", "model", "status"},
-	)
-
-	OllamaResponseTime = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "ai_search_ollama_response_time_seconds",
-			Help:    "Ollama response time in seconds",
-			Buckets: []float64{0.1, 0.5, 1, 2, 5, 10, 30},
-		},
-		[]string{"service", "model"},
-	)
 )
 
 // MetricsCollector handles system metrics collection
@@ -244,12 +227,3 @@ func RecordInferenceLatency(service, model string, streaming bool, duration time
 	InferenceLatency.WithLabelValues(service, model, streamingStr).Observe(duration.Seconds())
 }
 
-// RecordOllamaRequest records Ollama request
-func RecordOllamaRequest(service, model, status string) {
-	OllamaRequestsTotal.WithLabelValues(service, model, status).Inc()
-}
-
-// RecordOllamaResponseTime records Ollama response time
-func RecordOllamaResponseTime(service, model string, duration time.Duration) {
-	OllamaResponseTime.WithLabelValues(service, model).Observe(duration.Seconds())
-}

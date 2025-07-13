@@ -38,7 +38,7 @@ push: build
 # Run locally with Docker Compose (app only)
 run-local:
 	@echo "Starting application services locally..."
-	docker-compose up --build gateway search tokenizer inference llm safety redis ollama
+	docker-compose up --build gateway search tokenizer inference llm safety redis vllm
 
 # Run locally with Docker Compose (app + monitoring)
 run-local-with-monitoring:

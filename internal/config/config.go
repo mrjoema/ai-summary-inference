@@ -15,7 +15,6 @@ type Config struct {
 	Gateway     GatewayConfig  `mapstructure:"gateway"`
 	Services    ServicesConfig `mapstructure:"services"`
 	VLLM        VLLMConfig     `mapstructure:"vllm"`
-	Ollama      OllamaConfig   `mapstructure:"ollama"`
 	Redis       RedisConfig    `mapstructure:"redis"`
 	Google      GoogleConfig   `mapstructure:"google"`
 	LLM         LLMConfig      `mapstructure:"llm"`
@@ -52,14 +51,6 @@ type GoogleConfig struct {
 	CX     string `mapstructure:"cx"`
 }
 
-type OllamaConfig struct {
-	Host        string        `mapstructure:"host"`
-	Port        int           `mapstructure:"port"`
-	Model       string        `mapstructure:"model"`
-	Temperature float64       `mapstructure:"temperature"`
-	MaxTokens   int           `mapstructure:"max_tokens"`
-	Timeout     time.Duration `mapstructure:"timeout"`
-}
 
 type VLLMConfig struct {
 	Host        string        `mapstructure:"host"`
@@ -165,13 +156,6 @@ func setDefaults() {
 	viper.SetDefault("vllm.max_tokens", 500)
 	viper.SetDefault("vllm.timeout", "30s")
 
-	// Ollama (Fallback)
-	viper.SetDefault("ollama.host", "localhost")
-	viper.SetDefault("ollama.port", 11434)
-	viper.SetDefault("ollama.model", "llama3.2:3b")
-	viper.SetDefault("ollama.temperature", 0.7)
-	viper.SetDefault("ollama.max_tokens", 500)
-	viper.SetDefault("ollama.timeout", "30s")
 
 	// Redis
 	viper.SetDefault("redis.host", "localhost")
@@ -219,9 +203,6 @@ func overrideWithEnv() {
 	}
 	if val := os.Getenv("VLLM_HOST"); val != "" {
 		viper.Set("vllm.host", val)
-	}
-	if val := os.Getenv("OLLAMA_HOST"); val != "" {
-		viper.Set("ollama.host", val)
 	}
 	if val := os.Getenv("SEARCH_HOST"); val != "" {
 		viper.Set("services.search.host", val)

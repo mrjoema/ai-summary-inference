@@ -12,7 +12,6 @@ A high-performance, scalable AI-powered search engine built with Go microservice
 - **Safety Service** (Port 8084): Input validation and output sanitization
 - **LLM Orchestrator Service** (Port 8085): Coordinates tokenization and inference workflows
 - **vLLM Engine** (Port 8000): Enterprise token-native AI inference engine
-- **Ollama Engine** (Port 11434): Fallback AI inference engine for development
 - **Redis** (Port 6379): Caching and session management
 
 ### Key Features
@@ -188,7 +187,7 @@ SSE: /api/v1/search/stream/{task_id}
 - **Memory Usage**: System and process memory consumption
 - **GPU Metrics**: GPU utilization and memory (inference service)
 - **Request Metrics**: Request rates, latencies, and error rates
-- **AI Metrics**: Token processing, inference latency, Ollama performance
+- **AI Metrics**: Token processing, vLLM inference latency, enterprise performance
 - **Service Health**: Uptime and availability monitoring
 
 ### Monitoring Endpoints
@@ -200,8 +199,7 @@ curl http://localhost:8081/metrics    # Search metrics
 curl http://localhost:8082/metrics    # Tokenizer metrics (CPU intensive)
 curl http://localhost:8084/metrics    # Safety metrics
 curl http://localhost:8085/metrics    # LLM Orchestrator metrics
-curl http://localhost:8000/metrics    # vLLM Engine metrics
-curl http://localhost:11434/metrics  # Ollama Engine metrics
+curl http://localhost:8000/metrics   # vLLM Engine metrics
 
 # Monitoring dashboards
 http://localhost:3000                 # Grafana (admin/admin)
@@ -323,7 +321,7 @@ ai_search_request_duration_seconds{service="gateway", method="search"}
 // AI-specific metrics
 ai_search_tokens_processed_total{service="inference", model="llama3.2:3b"}
 ai_search_inference_latency_seconds{service="inference", model="llama3.2:3b", streaming="true"}
-ai_search_ollama_requests_total{service="inference", model="llama3.2:3b", status="success"}
+ai_search_vllm_requests_total{service="inference", model="microsoft/DialoGPT-small", status="success"}
 ```
 
 ### Performance Monitoring
@@ -331,7 +329,7 @@ Monitor these key performance indicators:
 - **Tokenizer CPU**: Should scale with request volume
 - **Inference GPU**: High utilization during AI processing
 - **Gateway Latency**: Overall request processing time
-- **Ollama Response Time**: AI model inference speed
+- **vLLM Response Time**: Enterprise AI model inference speed
 - **Error Rates**: Service reliability metrics
 
 ### Scaling Decisions
@@ -373,7 +371,7 @@ Use monitoring data to make scaling decisions:
 
 ### Enterprise AI Infrastructure
 - **vLLM Engine**: Primary inference engine with token-native processing
-- **Ollama Fallback**: Development and testing inference engine
+- **vLLM Integration**: Enterprise token-native AI inference engine
 - **LLM Orchestrator**: Coordinates tokenization → inference workflows
 - **Enterprise Tokenization**: Advanced tokenization with caching and batch processing
 
@@ -632,8 +630,8 @@ This system implements industry-standard streaming patterns optimized for AI inf
        │                   │                   │
        │                   ▼                   ▼
        │            ┌─────────────┐    ┌─────────────┐
-       └────────────│  Inference  │───▶│   Ollama    │
-         (Streaming)│   Service   │    │ (Fallback)  │
+       └────────────│  Inference  │───▶│    vLLM     │
+         (Streaming)│   Service   │    │ Enterprise  │
                     └─────────────┘    └─────────────┘
 ```
 

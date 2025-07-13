@@ -23,6 +23,7 @@ search
 inference
 llm
 safety
+tokenizer
 
 # IDE files
 .vscode/

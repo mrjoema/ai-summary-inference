@@ -88,24 +88,6 @@ groups:
           summary: "Slow AI inference detected"
           description: "{{ $labels.service }} inference latency 95th percentile is above 30 seconds for more than 2 minutes"
 
-      # Ollama service alerts
-      - alert: OllamaHighLatency
-        expr: histogram_quantile(0.95, rate(ai_search_ollama_response_time_seconds_bucket[5m])) > 10
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High Ollama latency detected"
-          description: "Ollama response time 95th percentile is above 10 seconds for more than 2 minutes"
-
-      - alert: OllamaErrorRate
-        expr: rate(ai_search_ollama_requests_total{status="error"}[5m]) / rate(ai_search_ollama_requests_total[5m]) > 0.05
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High Ollama error rate detected"
-          description: "Ollama error rate is above 5% for more than 2 minutes"
 
       # Tokenizer service alerts (CPU intensive)
       - alert: TokenizerHighLoad
