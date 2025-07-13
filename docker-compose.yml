@@ -71,31 +71,6 @@ services:
     networks:
       - ai-search-network
 
-  # Tokenizer service (CPU intensive)
-  tokenizer:
-    build:
-      context: .
-      dockerfile: Dockerfile.microservice
-      args:
-        SERVICE_NAME: tokenizer
-    ports:
-      - "8082:8082"
-    environment:
-      - SERVICE_NAME=tokenizer
-      - REDIS_HOST=redis
-      - LOG_LEVEL=info
-    depends_on:
-      - redis
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 1G
-        reservations:
-          cpus: '1.0'
-          memory: 512M
-    networks:
-      - ai-search-network
 
   # Inference service (GPU intensive - can be scaled)
   inference:
@@ -125,6 +100,26 @@ services:
     networks:
       - ai-search-network
 
+  llm:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: llm
+    ports:
+      - "8086:8085"
+    command: ["./llm"]
+    environment:
+      - SERVICE_NAME=llm
+      - INFERENCE_HOST=inference
+      - LLM_MAX_WORKERS=10
+      - LOG_LEVEL=info
+    depends_on:
+      - inference
+    networks:
+      - ai-search-network
+    restart: unless-stopped
+
   # Gateway service
   gateway:
     build:
@@ -136,9 +131,9 @@ services:
       - REDIS_HOST=redis
       - OLLAMA_HOST=ollama
       - SEARCH_HOST=search
-      - TOKENIZER_HOST=tokenizer
       - INFERENCE_HOST=inference
       - SAFETY_HOST=safety
+      - LLM_HOST=llm
       - LOG_LEVEL=info
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_CX=${GOOGLE_CX:-}
@@ -146,8 +141,8 @@ services:
       - redis
       - safety
       - search
-      - tokenizer
       - inference
+      - llm
     networks:
       - ai-search-network
 

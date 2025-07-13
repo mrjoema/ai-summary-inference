@@ -11,11 +11,6 @@ services:
     port: 8081
     timeout: 10s
   
-  tokenizer:
-    host: localhost
-    port: 8082
-    timeout: 5s
-  
   inference:
     host: localhost
     port: 8083
@@ -25,6 +20,11 @@ services:
     host: localhost
     port: 8084
     timeout: 5s
+  
+  llm:
+    host: localhost
+    port: 8085
+    timeout: 30s
 
 ollama:
   host: localhost

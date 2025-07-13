@@ -1,6 +1,6 @@
 # AI Search Engine with Microservices Architecture
 
-A high-performance, scalable AI-powered search engine built with Go microservices, designed for Kubernetes deployment with support for both streaming and non-streaming AI summaries.
+A high-performance, scalable AI-powered search engine built with Go microservices, designed for production deployment with comprehensive fault tolerance, backpressure handling, and modern streaming architecture.
 
 ## 🏗️ Architecture Overview
 
@@ -14,12 +14,14 @@ A high-performance, scalable AI-powered search engine built with Go microservice
 
 ### Key Features
 - ✅ **Safety-first**: Comprehensive input validation and output sanitization
-- ✅ **Streaming Support**: Real-time AI summary generation with HTTP streaming
+- ✅ **Streaming Support**: Real-time AI summary generation with Server-Sent Events (SSE)
 - ✅ **Non-blocking**: Search results appear immediately while AI summary generates
+- ✅ **Fault Tolerant**: Circuit breakers, graceful degradation, and retry mechanisms
+- ✅ **Backpressure Handling**: Intelligent load balancing and queue management
 - ✅ **Microservices**: Separate CPU and GPU intensive services for optimal resource allocation
 - ✅ **Kubernetes Ready**: Full K8s deployment with auto-scaling (HPA)
-- ✅ **Mac M4 Pro Optimized**: Easy local development and testing
-- ✅ **Production Ready**: Docker containers, health checks, monitoring
+- ✅ **Local Development**: Simple one-command setup for development and testing
+- ✅ **Production Ready**: Docker containers, health checks, comprehensive monitoring
 
 ## 🚀 Quick Start
 
@@ -344,7 +346,7 @@ Use monitoring data to make scaling decisions:
 4. Receive AI summary tokens in real-time
 5. Get final complete summary
 
-## 🛠️ Architecture Decisions
+## 🛠️ Architecture Decisions & Scaling Strategy
 
 ### Why Microservices?
 - **Resource Optimization**: Separate CPU (tokenizer) and GPU (inference) services
@@ -352,17 +354,51 @@ Use monitoring data to make scaling decisions:
 - **Fault Isolation**: Service failures don't affect others
 - **Technology Diversity**: Can use different tech stacks per service
 
+### Communication Patterns
+- **Internal Services**: gRPC for high-performance service-to-service communication
+- **Client Streaming**: Server-Sent Events (SSE) for real-time updates to web clients
+- **Backpressure**: Built-in gRPC streaming backpressure for flow control
+- **No Message Queues**: Simplified architecture with direct gRPC streaming between services
+
+### Fault Tolerance & Resilience
+- **Circuit Breakers**: Prevent cascading failures across services
+- **Graceful Degradation**: System continues operating with reduced functionality during overload
+- **Health Checks**: Comprehensive service health monitoring
+- **Timeout Management**: Request-level timeouts to prevent hanging operations
+- **Retry Mechanisms**: Intelligent retry with exponential backoff
+
+### Scaling Architecture
+
+#### Horizontal Scaling Guidelines
+```bash
+# CPU-intensive services (scale based on CPU usage)
+kubectl scale deployment tokenizer --replicas=5 -n ai-search
+
+# GPU-intensive services (scale based on GPU availability)
+kubectl scale deployment inference --replicas=3 -n ai-search
+
+# Load balancing services (scale based on request volume)
+kubectl scale deployment gateway --replicas=8 -n ai-search
+```
+
+#### Auto-scaling Configuration
+- **HPA (Horizontal Pod Autoscaler)**: Automatically scales based on CPU/memory/custom metrics
+- **CPU Targets**: 70% CPU utilization trigger for scaling
+- **Memory Targets**: 80% memory utilization trigger for scaling
+- **Custom Metrics**: Request latency and queue depth for intelligent scaling
+
 ### Why Go?
 - **Performance**: Excellent for high-throughput services
 - **Concurrency**: Built-in goroutines for handling multiple requests
 - **Deployment**: Single binary deployment
 - **Ecosystem**: Rich gRPC and HTTP libraries
 
-### Why gRPC?
-- **Performance**: Binary protocol, faster than REST
+### Why gRPC for Internal Communication?
+- **Performance**: Binary protocol, faster than REST (2-10x throughput improvement)
 - **Type Safety**: Protocol buffers ensure consistent APIs
-- **Streaming**: Built-in streaming support
-- **Load Balancing**: Automatic load balancing
+- **Streaming**: Built-in bidirectional streaming with backpressure
+- **Load Balancing**: Automatic load balancing and service discovery
+- **Low Latency**: Sub-millisecond internal service communication
 
 ## 📁 Project Structure
 
@@ -416,22 +452,127 @@ make logs SERVICE=gateway
 kubectl get pods -n ai-search
 ```
 
-### Performance Tuning
+### Performance Tuning & Production Optimization
 
-1. **Increase tokenizer replicas for high CPU load**:
+#### 1. Scaling Based on Metrics
 ```bash
-kubectl scale deployment tokenizer --replicas=5 -n ai-search
-```
-
-2. **Increase inference replicas for high GPU load**:
-```bash
-kubectl scale deployment inference --replicas=3 -n ai-search
-```
-
-3. **Monitor resource usage**:
-```bash
+# Monitor current resource usage
 kubectl top pods -n ai-search
+
+# Scale CPU-intensive services
+kubectl scale deployment tokenizer --replicas=5 -n ai-search
+
+# Scale GPU-intensive services (based on GPU availability)
+kubectl scale deployment inference --replicas=3 -n ai-search
+
+# Scale based on request volume
+kubectl scale deployment gateway --replicas=8 -n ai-search
 ```
+
+#### 2. Load Testing & Capacity Planning
+```bash
+# Run load tests to determine optimal scaling
+make test-backpressure
+
+# Test with different concurrency levels
+./scripts/load-test.sh --concurrent-users=100 --ramp-duration=60s
+./scripts/load-test.sh --concurrent-users=500 --ramp-duration=120s
+```
+
+#### 3. Circuit Breaker Configuration
+Monitor and tune circuit breaker thresholds based on your traffic patterns:
+- **Failure Threshold**: 50% error rate triggers circuit open
+- **Reset Timeout**: 30 seconds before attempting to close circuit
+- **Success Threshold**: 3 consecutive successes to close circuit
+
+#### 4. gRPC Streaming Optimization
+- **Connection Pooling**: Reuse gRPC connections for better performance
+- **Streaming Buffer Size**: Tune based on token generation speed
+- **Backpressure Thresholds**: Adjust based on downstream service capacity
+
+#### 5. Resource Requests & Limits
+```yaml
+# Recommended resource settings for production
+resources:
+  requests:
+    cpu: "500m"      # Tokenizer: CPU-bound
+    memory: "512Mi"
+  limits:
+    cpu: "2000m"     # Inference: GPU + CPU
+    memory: "2Gi"
+```
+
+## 🏭 Production Deployment Best Practices
+
+### Environment Configuration
+```bash
+# Production environment variables
+export ENVIRONMENT=production
+export LOG_LEVEL=warn
+export REDIS_CLUSTER_MODE=true
+export ENABLE_METRICS=true
+export ENABLE_TRACING=true
+```
+
+### High Availability Setup
+```yaml
+# Multi-zone deployment for fault tolerance
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values: ["ai-search-gateway"]
+              topologyKey: topology.kubernetes.io/zone
+```
+
+### Security Hardening
+- **Network Policies**: Restrict inter-service communication
+- **Pod Security Standards**: Enforce restricted security contexts
+- **RBAC**: Minimal required permissions for service accounts
+- **Secrets Management**: Use Kubernetes secrets or external secret managers
+- **Image Scanning**: Regular vulnerability scanning of container images
+
+### Monitoring & Alerting in Production
+```yaml
+# Critical alerts for production
+alerts:
+  - name: ServiceDown
+    condition: up == 0
+    for: 1m
+    severity: critical
+  
+  - name: HighErrorRate
+    condition: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+    for: 2m
+    severity: warning
+  
+  - name: HighLatency
+    condition: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+    for: 5m
+    severity: warning
+```
+
+### Backup & Disaster Recovery
+- **Redis Backup**: Automated Redis persistence and backup
+- **Configuration Backup**: Version-controlled configuration management
+- **Multi-Region**: Deploy across multiple regions for disaster recovery
+- **RTO/RPO Targets**: Recovery Time Objective < 15 minutes, Recovery Point Objective < 5 minutes
 
 ## 🤝 Contributing
 
@@ -445,9 +586,45 @@ kubectl top pods -n ai-search
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## 🔄 Modern Streaming Architecture
+
+This system implements industry-standard streaming patterns optimized for AI inference workloads:
+
+### Communication Flow
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Client    │───▶│   Gateway   │───▶│   Search    │
+│ (SSE Stream)│    │(HTTP + gRPC)│    │  Service    │
+└─────────────┘    └─────────────┘    └─────────────┘
+       ▲                   │                   │
+       │                   ▼                   ▼
+       │            ┌─────────────┐    ┌─────────────┐
+       │            │  Tokenizer  │    │    Redis    │
+       │            │   Service   │    │   Cache     │
+       │            └─────────────┘    └─────────────┘
+       │                   │
+       │                   ▼
+       │            ┌─────────────┐
+       └────────────│  Inference  │
+         (Streaming)│   Service   │
+                    └─────────────┘
+```
+
+### Why This Architecture?
+- **SSE for Clients**: Universal browser support, simple debugging
+- **gRPC Internal**: High-performance service-to-service communication
+- **No Message Queues**: Simplified operations, lower latency
+- **Direct Streaming**: Real-time token streaming from inference to client
+
+### Industry Alignment
+- **OpenAI Pattern**: Similar to ChatGPT's streaming architecture
+- **Cloud Native**: Follows CNCF best practices for microservices
+- **Production Proven**: Based on patterns used by major AI companies
+
 ## 🙏 Acknowledgments
 
-- Built with Go and gRPC
-- Designed for Kubernetes deployment
-- Optimized for Mac M4 Pro development
-- Inspired by modern microservices architecture patterns 
+- Built with Go and gRPC for high-performance streaming
+- Designed for Kubernetes deployment with cloud-native patterns
+- Optimized for both local development and production scaling
+- Inspired by modern AI inference architectures (OpenAI, Anthropic)
+- Follows industry best practices for fault tolerance and observability 

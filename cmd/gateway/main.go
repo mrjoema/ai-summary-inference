@@ -87,10 +87,9 @@ func setupRoutes(router *gin.Engine, gw *gateway.Gateway) {
 	// API routes
 	api := router.Group("/api/v1")
 	{
-		// Search endpoints
-		api.POST("/search", gw.Search)
-		api.GET("/search/stream/:taskId", gw.SearchStream)
-		api.GET("/search/status/:taskId", gw.SearchStatus)
+		// Single search endpoint (handles both streaming and non-streaming)
+		api.POST("/search", gw.Search)  // Non-streaming: JSON body
+		api.GET("/search", gw.Search)   // Streaming: query params + Accept: text/event-stream
 
 		// Utility endpoints
 		api.POST("/validate", gw.ValidateInput)

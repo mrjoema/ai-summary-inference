@@ -1,7 +1,7 @@
 # Variables
 DOCKER_REGISTRY ?= ai-search
 VERSION ?= latest
-SERVICES = gateway search tokenizer inference safety
+SERVICES = gateway search inference llm safety
 
 .PHONY: all build push deploy clean test proto
 
@@ -17,16 +17,14 @@ proto:
 		proto/search.proto
 
 # Build all services
-build: proto
-	@echo "Building all services..."
-	@for service in $(SERVICES); do \
-		echo "Building $$service..."; \
-		if [ "$$service" = "gateway" ]; then \
-			docker build -f Dockerfile.gateway -t $(DOCKER_REGISTRY)/$$service:$(VERSION) .; \
-		else \
-			docker build -f Dockerfile.microservice --build-arg SERVICE_NAME=$$service -t $(DOCKER_REGISTRY)/$$service:$(VERSION) .; \
-		fi; \
-	done
+build:
+	@echo "Building services..."
+	go build -o gateway ./cmd/gateway
+	go build -o search ./cmd/search
+	go build -o inference ./cmd/inference
+	go build -o llm ./cmd/llm
+	go build -o safety ./cmd/safety
+	@echo "Build complete"
 
 # Push all images to registry
 push: build
@@ -39,7 +37,7 @@ push: build
 # Run locally with Docker Compose (app only)
 run-local:
 	@echo "Starting application services locally..."
-	docker-compose up --build gateway search tokenizer inference safety redis ollama
+	docker-compose up --build gateway search inference llm safety redis ollama
 
 # Run locally with Docker Compose (app + monitoring)
 run-local-with-monitoring:

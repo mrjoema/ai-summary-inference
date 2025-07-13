@@ -163,150 +163,6 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	TokenizerService_Tokenize_FullMethodName    = "/search.TokenizerService/Tokenize"
-	TokenizerService_HealthCheck_FullMethodName = "/search.TokenizerService/HealthCheck"
-)
-
-// TokenizerServiceClient is the client API for TokenizerService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// Tokenizer service definitions
-type TokenizerServiceClient interface {
-	Tokenize(ctx context.Context, in *TokenizeRequest, opts ...grpc.CallOption) (*TokenizeResponse, error)
-	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
-}
-
-type tokenizerServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewTokenizerServiceClient(cc grpc.ClientConnInterface) TokenizerServiceClient {
-	return &tokenizerServiceClient{cc}
-}
-
-func (c *tokenizerServiceClient) Tokenize(ctx context.Context, in *TokenizeRequest, opts ...grpc.CallOption) (*TokenizeResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(TokenizeResponse)
-	err := c.cc.Invoke(ctx, TokenizerService_Tokenize_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *tokenizerServiceClient) HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(HealthCheckResponse)
-	err := c.cc.Invoke(ctx, TokenizerService_HealthCheck_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// TokenizerServiceServer is the server API for TokenizerService service.
-// All implementations must embed UnimplementedTokenizerServiceServer
-// for forward compatibility.
-//
-// Tokenizer service definitions
-type TokenizerServiceServer interface {
-	Tokenize(context.Context, *TokenizeRequest) (*TokenizeResponse, error)
-	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
-	mustEmbedUnimplementedTokenizerServiceServer()
-}
-
-// UnimplementedTokenizerServiceServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedTokenizerServiceServer struct{}
-
-func (UnimplementedTokenizerServiceServer) Tokenize(context.Context, *TokenizeRequest) (*TokenizeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Tokenize not implemented")
-}
-func (UnimplementedTokenizerServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
-}
-func (UnimplementedTokenizerServiceServer) mustEmbedUnimplementedTokenizerServiceServer() {}
-func (UnimplementedTokenizerServiceServer) testEmbeddedByValue()                          {}
-
-// UnsafeTokenizerServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to TokenizerServiceServer will
-// result in compilation errors.
-type UnsafeTokenizerServiceServer interface {
-	mustEmbedUnimplementedTokenizerServiceServer()
-}
-
-func RegisterTokenizerServiceServer(s grpc.ServiceRegistrar, srv TokenizerServiceServer) {
-	// If the following call pancis, it indicates UnimplementedTokenizerServiceServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&TokenizerService_ServiceDesc, srv)
-}
-
-func _TokenizerService_Tokenize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TokenizeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TokenizerServiceServer).Tokenize(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TokenizerService_Tokenize_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TokenizerServiceServer).Tokenize(ctx, req.(*TokenizeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TokenizerService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HealthCheckRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TokenizerServiceServer).HealthCheck(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: TokenizerService_HealthCheck_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TokenizerServiceServer).HealthCheck(ctx, req.(*HealthCheckRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// TokenizerService_ServiceDesc is the grpc.ServiceDesc for TokenizerService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var TokenizerService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "search.TokenizerService",
-	HandlerType: (*TokenizerServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Tokenize",
-			Handler:    _TokenizerService_Tokenize_Handler,
-		},
-		{
-			MethodName: "HealthCheck",
-			Handler:    _TokenizerService_HealthCheck_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "proto/search.proto",
-}
-
-const (
 	InferenceService_Summarize_FullMethodName       = "/search.InferenceService/Summarize"
 	InferenceService_SummarizeStream_FullMethodName = "/search.InferenceService/SummarizeStream"
 	InferenceService_HealthCheck_FullMethodName     = "/search.InferenceService/HealthCheck"
@@ -671,5 +527,230 @@ var SafetyService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/search.proto",
+}
+
+const (
+	LLMOrchestratorService_ProcessRequest_FullMethodName = "/search.LLMOrchestratorService/ProcessRequest"
+	LLMOrchestratorService_StreamRequest_FullMethodName  = "/search.LLMOrchestratorService/StreamRequest"
+	LLMOrchestratorService_GetStatus_FullMethodName      = "/search.LLMOrchestratorService/GetStatus"
+	LLMOrchestratorService_HealthCheck_FullMethodName    = "/search.LLMOrchestratorService/HealthCheck"
+)
+
+// LLMOrchestratorServiceClient is the client API for LLMOrchestratorService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// LLM Orchestrator service definitions
+type LLMOrchestratorServiceClient interface {
+	ProcessRequest(ctx context.Context, in *LLMRequest, opts ...grpc.CallOption) (*LLMResponse, error)
+	StreamRequest(ctx context.Context, in *LLMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LLMStreamResponse], error)
+	GetStatus(ctx context.Context, in *LLMStatusRequest, opts ...grpc.CallOption) (*LLMStatusResponse, error)
+	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
+}
+
+type lLMOrchestratorServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewLLMOrchestratorServiceClient(cc grpc.ClientConnInterface) LLMOrchestratorServiceClient {
+	return &lLMOrchestratorServiceClient{cc}
+}
+
+func (c *lLMOrchestratorServiceClient) ProcessRequest(ctx context.Context, in *LLMRequest, opts ...grpc.CallOption) (*LLMResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LLMResponse)
+	err := c.cc.Invoke(ctx, LLMOrchestratorService_ProcessRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *lLMOrchestratorServiceClient) StreamRequest(ctx context.Context, in *LLMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LLMStreamResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &LLMOrchestratorService_ServiceDesc.Streams[0], LLMOrchestratorService_StreamRequest_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[LLMRequest, LLMStreamResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type LLMOrchestratorService_StreamRequestClient = grpc.ServerStreamingClient[LLMStreamResponse]
+
+func (c *lLMOrchestratorServiceClient) GetStatus(ctx context.Context, in *LLMStatusRequest, opts ...grpc.CallOption) (*LLMStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LLMStatusResponse)
+	err := c.cc.Invoke(ctx, LLMOrchestratorService_GetStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *lLMOrchestratorServiceClient) HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HealthCheckResponse)
+	err := c.cc.Invoke(ctx, LLMOrchestratorService_HealthCheck_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// LLMOrchestratorServiceServer is the server API for LLMOrchestratorService service.
+// All implementations must embed UnimplementedLLMOrchestratorServiceServer
+// for forward compatibility.
+//
+// LLM Orchestrator service definitions
+type LLMOrchestratorServiceServer interface {
+	ProcessRequest(context.Context, *LLMRequest) (*LLMResponse, error)
+	StreamRequest(*LLMRequest, grpc.ServerStreamingServer[LLMStreamResponse]) error
+	GetStatus(context.Context, *LLMStatusRequest) (*LLMStatusResponse, error)
+	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
+	mustEmbedUnimplementedLLMOrchestratorServiceServer()
+}
+
+// UnimplementedLLMOrchestratorServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedLLMOrchestratorServiceServer struct{}
+
+func (UnimplementedLLMOrchestratorServiceServer) ProcessRequest(context.Context, *LLMRequest) (*LLMResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProcessRequest not implemented")
+}
+func (UnimplementedLLMOrchestratorServiceServer) StreamRequest(*LLMRequest, grpc.ServerStreamingServer[LLMStreamResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamRequest not implemented")
+}
+func (UnimplementedLLMOrchestratorServiceServer) GetStatus(context.Context, *LLMStatusRequest) (*LLMStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
+}
+func (UnimplementedLLMOrchestratorServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedLLMOrchestratorServiceServer) mustEmbedUnimplementedLLMOrchestratorServiceServer() {
+}
+func (UnimplementedLLMOrchestratorServiceServer) testEmbeddedByValue() {}
+
+// UnsafeLLMOrchestratorServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to LLMOrchestratorServiceServer will
+// result in compilation errors.
+type UnsafeLLMOrchestratorServiceServer interface {
+	mustEmbedUnimplementedLLMOrchestratorServiceServer()
+}
+
+func RegisterLLMOrchestratorServiceServer(s grpc.ServiceRegistrar, srv LLMOrchestratorServiceServer) {
+	// If the following call pancis, it indicates UnimplementedLLMOrchestratorServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&LLMOrchestratorService_ServiceDesc, srv)
+}
+
+func _LLMOrchestratorService_ProcessRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LLMRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LLMOrchestratorServiceServer).ProcessRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LLMOrchestratorService_ProcessRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LLMOrchestratorServiceServer).ProcessRequest(ctx, req.(*LLMRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LLMOrchestratorService_StreamRequest_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(LLMRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(LLMOrchestratorServiceServer).StreamRequest(m, &grpc.GenericServerStream[LLMRequest, LLMStreamResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type LLMOrchestratorService_StreamRequestServer = grpc.ServerStreamingServer[LLMStreamResponse]
+
+func _LLMOrchestratorService_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LLMStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LLMOrchestratorServiceServer).GetStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LLMOrchestratorService_GetStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LLMOrchestratorServiceServer).GetStatus(ctx, req.(*LLMStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LLMOrchestratorService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HealthCheckRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LLMOrchestratorServiceServer).HealthCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: LLMOrchestratorService_HealthCheck_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LLMOrchestratorServiceServer).HealthCheck(ctx, req.(*HealthCheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// LLMOrchestratorService_ServiceDesc is the grpc.ServiceDesc for LLMOrchestratorService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var LLMOrchestratorService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "search.LLMOrchestratorService",
+	HandlerType: (*LLMOrchestratorServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "ProcessRequest",
+			Handler:    _LLMOrchestratorService_ProcessRequest_Handler,
+		},
+		{
+			MethodName: "GetStatus",
+			Handler:    _LLMOrchestratorService_GetStatus_Handler,
+		},
+		{
+			MethodName: "HealthCheck",
+			Handler:    _LLMOrchestratorService_HealthCheck_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamRequest",
+			Handler:       _LLMOrchestratorService_StreamRequest_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "proto/search.proto",
 }

@@ -59,13 +59,13 @@ func (i *InferenceService) Summarize(ctx context.Context, req *pb.SummarizeReque
 	start := time.Now()
 	log := logger.GetLogger()
 
-	log.Infof("Generating summary for %d tokens", len(req.Tokens))
+	log.Infof("Generating summary for text length: %d characters", len(req.OriginalText))
 
 	// Create summarization prompt
 	prompt := i.createSummarizationPrompt(req.OriginalText, int(req.MaxLength))
 
-	// Record tokens processed
-	monitoring.RecordTokensProcessed("inference", i.config.Ollama.Model, len(req.Tokens))
+	// Record text processed
+	monitoring.RecordTokensProcessed("inference", i.config.Ollama.Model, len(req.OriginalText))
 
 	// Call Ollama API
 	summary, err := i.callOllama(ctx, prompt, false)
@@ -86,7 +86,7 @@ func (i *InferenceService) Summarize(ctx context.Context, req *pb.SummarizeReque
 	return &pb.SummarizeResponse{
 		Summary:    summary,
 		Success:    true,
-		TokensUsed: int32(len(req.Tokens)),
+		TokensUsed: int32(len(req.OriginalText)),
 		Confidence: 0.85,
 	}, nil
 }
@@ -95,13 +95,13 @@ func (i *InferenceService) SummarizeStream(req *pb.SummarizeRequest, stream pb.I
 	start := time.Now()
 	log := logger.GetLogger()
 
-	log.Infof("Starting streaming summary for %d tokens", len(req.Tokens))
+	log.Infof("Starting streaming summary for text length: %d characters", len(req.OriginalText))
 
 	// Create summarization prompt
 	prompt := i.createSummarizationPrompt(req.OriginalText, int(req.MaxLength))
 
-	// Record tokens processed
-	monitoring.RecordTokensProcessed("inference", i.config.Ollama.Model, len(req.Tokens))
+	// Record text processed
+	monitoring.RecordTokensProcessed("inference", i.config.Ollama.Model, len(req.OriginalText))
 
 	// Call Ollama API with streaming
 	err := i.callOllamaStream(stream.Context(), prompt, stream)

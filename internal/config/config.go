@@ -17,6 +17,7 @@ type Config struct {
 	Ollama      OllamaConfig   `mapstructure:"ollama"`
 	Redis       RedisConfig    `mapstructure:"redis"`
 	Google      GoogleConfig   `mapstructure:"google"`
+	LLM         LLMConfig      `mapstructure:"llm"`
 }
 
 type GatewayConfig struct {
@@ -26,9 +27,9 @@ type GatewayConfig struct {
 
 type ServicesConfig struct {
 	Search    ServiceConfig `mapstructure:"search"`
-	Tokenizer ServiceConfig `mapstructure:"tokenizer"`
 	Inference ServiceConfig `mapstructure:"inference"`
 	Safety    ServiceConfig `mapstructure:"safety"`
+	LLM       ServiceConfig `mapstructure:"llm"`
 }
 
 type ServiceConfig struct {
@@ -56,6 +57,11 @@ type OllamaConfig struct {
 	Temperature float64       `mapstructure:"temperature"`
 	MaxTokens   int           `mapstructure:"max_tokens"`
 	Timeout     time.Duration `mapstructure:"timeout"`
+}
+
+type LLMConfig struct {
+	MaxWorkers   int `mapstructure:"max_workers"`
+	MaxQueueSize int `mapstructure:"max_queue_size"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -89,6 +95,22 @@ func LoadConfig() (*Config, error) {
 	return &config, nil
 }
 
+// GetRedisAddress returns the Redis address
+func (c *Config) GetRedisAddress() string {
+	return fmt.Sprintf("%s:%d", c.Redis.Host, c.Redis.Port)
+}
+
+
+// GetInferenceAddress returns the inference service address
+func (c *Config) GetInferenceAddress() string {
+	return fmt.Sprintf("%s:%d", c.Services.Inference.Host, c.Services.Inference.Port)
+}
+
+// GetLLMAddress returns the LLM orchestrator service address
+func (c *Config) GetLLMAddress() string {
+	return fmt.Sprintf("%s:%d", c.Services.LLM.Host, c.Services.LLM.Port)
+}
+
 func setDefaults() {
 	// Environment
 	viper.SetDefault("environment", "development")
@@ -103,9 +125,6 @@ func setDefaults() {
 	viper.SetDefault("services.search.port", 8081)
 	viper.SetDefault("services.search.timeout", "10s")
 
-	viper.SetDefault("services.tokenizer.host", "localhost")
-	viper.SetDefault("services.tokenizer.port", 8082)
-	viper.SetDefault("services.tokenizer.timeout", "5s")
 
 	viper.SetDefault("services.inference.host", "localhost")
 	viper.SetDefault("services.inference.port", 8083)
@@ -114,6 +133,10 @@ func setDefaults() {
 	viper.SetDefault("services.safety.host", "localhost")
 	viper.SetDefault("services.safety.port", 8084)
 	viper.SetDefault("services.safety.timeout", "5s")
+
+	viper.SetDefault("services.llm.host", "localhost")
+	viper.SetDefault("services.llm.port", 8085)
+	viper.SetDefault("services.llm.timeout", "30s")
 
 	// Ollama
 	viper.SetDefault("ollama.host", "localhost")
@@ -132,6 +155,10 @@ func setDefaults() {
 	// Google
 	viper.SetDefault("google.api_key", "")
 	viper.SetDefault("google.cx", "")
+
+	// LLM
+	viper.SetDefault("llm.max_workers", 10)
+	viper.SetDefault("llm.max_queue_size", 10000)
 }
 
 func overrideWithEnv() {
@@ -169,13 +196,13 @@ func overrideWithEnv() {
 	if val := os.Getenv("SEARCH_HOST"); val != "" {
 		viper.Set("services.search.host", val)
 	}
-	if val := os.Getenv("TOKENIZER_HOST"); val != "" {
-		viper.Set("services.tokenizer.host", val)
-	}
 	if val := os.Getenv("INFERENCE_HOST"); val != "" {
 		viper.Set("services.inference.host", val)
 	}
 	if val := os.Getenv("SAFETY_HOST"); val != "" {
 		viper.Set("services.safety.host", val)
+	}
+	if val := os.Getenv("LLM_HOST"); val != "" {
+		viper.Set("services.llm.host", val)
 	}
 }

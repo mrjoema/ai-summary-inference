@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,25 +24,11 @@ type Gateway struct {
 	redis           *redis.Client
 	searchClient    pb.SearchServiceClient
 	safetyClient    pb.SafetyServiceClient
-	tokenizerClient pb.TokenizerServiceClient
 	inferenceClient pb.InferenceServiceClient
-	tasks           map[string]*SearchTask
-	tasksMutex      sync.RWMutex
+	llmClient       pb.LLMOrchestratorServiceClient
 	metrics         *monitoring.MetricsCollector
 }
 
-type SearchTask struct {
-	ID            string         `json:"id"`
-	Query         string         `json:"query"`
-	Status        string         `json:"status"` // pending, searching, summarizing, completed, failed
-	SearchResults []SearchResult `json:"search_results"`
-	Summary       string         `json:"summary"`
-	Error         string         `json:"error,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
-	Streaming     bool           `json:"streaming"`
-	StreamTokens  []string       `json:"stream_tokens,omitempty"`
-}
 
 type SearchResult struct {
 	Title      string `json:"title"`
@@ -59,13 +45,11 @@ type SearchRequest struct {
 }
 
 type SearchResponse struct {
-	TaskID        string         `json:"task_id"`
 	Query         string         `json:"query"`
 	Status        string         `json:"status"`
 	SearchResults []SearchResult `json:"search_results,omitempty"`
 	Summary       string         `json:"summary,omitempty"`
 	Error         string         `json:"error,omitempty"`
-	Streaming     bool           `json:"streaming"`
 }
 
 func NewGateway(cfg *config.Config) (*Gateway, error) {
@@ -89,6 +73,15 @@ func NewGateway(cfg *config.Config) (*Gateway, error) {
 		logger.GetLogger().Warnf("Redis connection failed: %v", err)
 	}
 
+	// Connect to LLM orchestrator service
+	llmConn, err := grpc.Dial(
+		cfg.GetLLMAddress(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to LLM orchestrator service: %w", err)
+	}
+
 	// Initialize gRPC clients
 	searchConn, err := grpc.Dial(
 		fmt.Sprintf("%s:%d", cfg.Services.Search.Host, cfg.Services.Search.Port),
@@ -106,14 +99,6 @@ func NewGateway(cfg *config.Config) (*Gateway, error) {
 		return nil, fmt.Errorf("failed to connect to safety service: %w", err)
 	}
 
-	tokenizerConn, err := grpc.Dial(
-		fmt.Sprintf("%s:%d", cfg.Services.Tokenizer.Host, cfg.Services.Tokenizer.Port),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to tokenizer service: %w", err)
-	}
-
 	inferenceConn, err := grpc.Dial(
 		fmt.Sprintf("%s:%d", cfg.Services.Inference.Host, cfg.Services.Inference.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -122,16 +107,18 @@ func NewGateway(cfg *config.Config) (*Gateway, error) {
 		return nil, fmt.Errorf("failed to connect to inference service: %w", err)
 	}
 
-	return &Gateway{
+	// Initialize gateway
+	g := &Gateway{
 		config:          cfg,
 		redis:           redisClient,
 		searchClient:    pb.NewSearchServiceClient(searchConn),
 		safetyClient:    pb.NewSafetyServiceClient(safetyConn),
-		tokenizerClient: pb.NewTokenizerServiceClient(tokenizerConn),
 		inferenceClient: pb.NewInferenceServiceClient(inferenceConn),
-		tasks:           make(map[string]*SearchTask),
+		llmClient:       pb.NewLLMOrchestratorServiceClient(llmConn),
 		metrics:         metricsCollector,
-	}, nil
+	}
+
+	return g, nil
 }
 
 func (g *Gateway) HealthCheck(c *gin.Context) {
@@ -185,107 +172,237 @@ func (g *Gateway) Metrics(c *gin.Context) {
 
 func (g *Gateway) Search(c *gin.Context) {
 	start := time.Now()
+	
+	// Check if client wants streaming (Accept header or query param)
+	wantsStreaming := c.GetHeader("Accept") == "text/event-stream" || 
+					 c.Query("streaming") == "true"
+	
+	if wantsStreaming {
+		g.searchWithStreaming(c, start)
+	} else {
+		g.searchWithoutStreaming(c, start)
+	}
+}
+
+// searchWithStreaming handles streaming requests with immediate SSE response
+func (g *Gateway) searchWithStreaming(c *gin.Context, start time.Time) {
+	// Set SSE headers immediately
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Headers", "Cache-Control")
+	
+	// Get query parameters
+	query := c.Query("query")
+	safeSearchStr := c.Query("safe_search")
+	numResultsStr := c.Query("num_results")
+	
+	if query == "" {
+		c.SSEvent("error", gin.H{"message": "Query parameter required"})
+		return
+	}
+	
+	// Parse parameters
+	safeSearch := safeSearchStr == "true"
+	numResults := 5
+	if numResultsStr != "" {
+		if parsed, err := strconv.Atoi(numResultsStr); err == nil {
+			numResults = parsed
+		}
+	}
+	
+	// Check system capacity
+	if !g.checkSystemCapacity() {
+		monitoring.RecordRequest("gateway", "search", "rejected")
+		c.SSEvent("error", gin.H{
+			"message": "System overloaded, please try again later",
+			"retry_after": 30,
+		})
+		return
+	}
+	
+	// Record metrics
+	monitoring.RecordRequest("gateway", "search", "success")
+	monitoring.RecordRequestDuration("gateway", "search", time.Since(start))
+	
+	// Start processing and stream results immediately
+	g.processAndStreamSearch(c, query, safeSearch, numResults)
+}
+
+// searchWithoutStreaming handles non-streaming requests with immediate JSON response
+func (g *Gateway) searchWithoutStreaming(c *gin.Context, start time.Time) {
 	var req SearchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		monitoring.RecordRequest("gateway", "search", "error")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Generate task ID
-	taskID := fmt.Sprintf("task_%d", time.Now().UnixNano())
-
-	// Create search task
-	task := &SearchTask{
-		ID:        taskID,
-		Query:     req.Query,
-		Status:    "pending",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Streaming: req.Streaming,
+	
+	// Check system capacity
+	if !g.checkSystemCapacity() {
+		monitoring.RecordRequest("gateway", "search", "rejected")
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":       "System overloaded, please try again later",
+			"retry_after": 30,
+		})
+		return
 	}
-
-	// Store task
-	g.tasksMutex.Lock()
-	g.tasks[taskID] = task
-	g.tasksMutex.Unlock()
-
-	// Start search process asynchronously
-	go g.processSearch(task, req)
-
+	
+	// Process search synchronously and return complete result
+	result := g.processSearchSync(req)
+	
 	// Record metrics
 	monitoring.RecordRequest("gateway", "search", "success")
 	monitoring.RecordRequestDuration("gateway", "search", time.Since(start))
-
-	// Return immediate response
-	c.JSON(http.StatusOK, SearchResponse{
-		TaskID:    taskID,
-		Query:     req.Query,
-		Status:    "pending",
-		Streaming: req.Streaming,
-	})
+	
+	c.JSON(http.StatusOK, result)
 }
 
-func (g *Gateway) SearchStatus(c *gin.Context) {
-	taskID := c.Param("taskId")
-
-	g.tasksMutex.RLock()
-	task, exists := g.tasks[taskID]
-	g.tasksMutex.RUnlock()
-
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-		return
-	}
-
-	response := SearchResponse{
-		TaskID:        task.ID,
-		Query:         task.Query,
-		Status:        task.Status,
-		SearchResults: task.SearchResults,
-		Summary:       task.Summary,
-		Error:         task.Error,
-		Streaming:     task.Streaming,
-	}
-
-	c.JSON(http.StatusOK, response)
-}
-
-func (g *Gateway) SearchStream(c *gin.Context) {
-	taskID := c.Param("taskId")
-
-	g.tasksMutex.RLock()
-	task, exists := g.tasks[taskID]
-	g.tasksMutex.RUnlock()
-
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
-		return
-	}
-
-	if !task.Streaming {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Task is not in streaming mode"})
-		return
-	}
-
-	// Set up Server-Sent Events headers
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-	c.Header("Access-Control-Allow-Headers", "Cache-Control")
-
-	// Stream updates
-	g.streamTaskUpdates(c, task)
-}
-
-func (g *Gateway) processSearch(task *SearchTask, req SearchRequest) {
+// processAndStreamSearch handles streaming search with immediate response
+func (g *Gateway) processAndStreamSearch(c *gin.Context, query string, safeSearch bool, numResults int) {
 	ctx := context.Background()
 	log := logger.GetLogger()
+	
+	// 1. Send initial status
+	c.SSEvent("status", gin.H{
+		"type": "started",
+		"query": query,
+		"timestamp": time.Now().Unix(),
+	})
+	c.Writer.Flush()
+	
+	// 2. Validate input
+	c.SSEvent("status", gin.H{"type": "validating"})
+	c.Writer.Flush()
+	
+	safetyResp, err := g.safetyClient.ValidateInput(ctx, &pb.ValidateInputRequest{
+		Text:       query,
+		ClientIp:   c.ClientIP(),
+		SafeSearch: safeSearch,
+	})
+	if err != nil {
+		log.Errorf("Safety validation failed: %v", err)
+		c.SSEvent("error", gin.H{"message": "Safety validation failed"})
+		return
+	}
+	
+	if !safetyResp.IsSafe {
+		c.SSEvent("error", gin.H{"message": "Query contains unsafe content"})
+		return
+	}
+	
+	// 3. Perform search
+	c.SSEvent("status", gin.H{"type": "searching"})
+	c.Writer.Flush()
+	
+	searchResp, err := g.searchClient.Search(ctx, &pb.SearchRequest{
+		Query:      safetyResp.SanitizedText,
+		SafeSearch: safeSearch,
+		NumResults: int32(numResults),
+	})
+	if err != nil {
+		log.Errorf("Search failed: %v", err)
+		c.SSEvent("error", gin.H{"message": "Search failed"})
+		return
+	}
+	
+	if !searchResp.Success {
+		c.SSEvent("error", gin.H{"message": searchResp.Error})
+		return
+	}
+	
+	// 4. Stream search results immediately
+	searchResults := make([]SearchResult, len(searchResp.Results))
+	for i, result := range searchResp.Results {
+		searchResults[i] = SearchResult{
+			Title:      result.Title,
+			URL:        result.Url,
+			Snippet:    result.Snippet,
+			DisplayURL: result.DisplayUrl,
+		}
+	}
+	
+	c.SSEvent("search_results", gin.H{
+		"type": "search_results",
+		"results": searchResults,
+	})
+	c.Writer.Flush()
+	
+	// 5. Start AI summarization
+	c.SSEvent("status", gin.H{"type": "summarizing"})
+	c.Writer.Flush()
+	
+	// Prepare text for summarization
+	var textToSummarize string
+	for _, result := range searchResults {
+		textToSummarize += result.Title + " " + result.Snippet + " "
+	}
+	
+	// Submit LLM request to orchestrator service
+	llmReq := &pb.LLMRequest{
+		Id:        fmt.Sprintf("stream_%d", time.Now().UnixNano()),
+		Text:      textToSummarize,
+		MaxTokens: 150,
+		Stream:    true,
+		CreatedAt: time.Now().Unix(),
+	}
+	
+	// Process the request using streaming method
+	ctx, cancel := context.WithTimeout(context.Background(), g.config.Services.LLM.Timeout)
+	defer cancel()
+	
+	stream, err := g.llmClient.StreamRequest(ctx, llmReq)
+	if err != nil {
+		log.Errorf("Failed to start LLM stream: %v", err)
+		c.SSEvent("error", gin.H{"message": "Failed to start AI summarization"})
+		return
+	}
 
-	// Update task status
-	g.updateTaskStatus(task, "validating")
+	// Stream tokens as they arrive
+	for {
+		response, err := stream.Recv()
+		if err != nil {
+			if err.Error() == "EOF" {
+				// Stream completed
+				c.SSEvent("complete", gin.H{"type": "complete"})
+				return
+			}
+			log.Errorf("Stream error: %v", err)
+			c.SSEvent("error", gin.H{"message": "Streaming error"})
+			return
+		}
 
+		// Handle error in response
+		if response.Error != "" {
+			c.SSEvent("error", gin.H{"message": response.Error})
+			return
+		}
+
+		// Send token if available
+		if response.Token != "" {
+			c.SSEvent("token", gin.H{
+				"type": "token",
+				"token": response.Token,
+				"position": response.Position,
+			})
+			c.Writer.Flush()
+		}
+
+		// Check if final
+		if response.IsFinal {
+			c.SSEvent("summary", gin.H{"type": "summary"})
+			c.SSEvent("complete", gin.H{"type": "complete"})
+			return
+		}
+	}
+}
+
+// processSearchSync handles non-streaming search with complete response
+func (g *Gateway) processSearchSync(req SearchRequest) SearchResponse {
+	ctx := context.Background()
+	log := logger.GetLogger()
+	
 	// Validate input
 	safetyResp, err := g.safetyClient.ValidateInput(ctx, &pb.ValidateInputRequest{
 		Text:       req.Query,
@@ -293,18 +410,22 @@ func (g *Gateway) processSearch(task *SearchTask, req SearchRequest) {
 		SafeSearch: req.SafeSearch,
 	})
 	if err != nil {
-		g.updateTaskError(task, fmt.Sprintf("Safety validation failed: %v", err))
-		return
+		log.Errorf("Safety validation failed: %v", err)
+		return SearchResponse{
+			Query:  req.Query,
+			Status: "failed",
+			Error:  "Safety validation failed",
+		}
 	}
-
+	
 	if !safetyResp.IsSafe {
-		g.updateTaskError(task, "Query contains unsafe content")
-		return
+		return SearchResponse{
+			Query:  req.Query,
+			Status: "failed",
+			Error:  "Query contains unsafe content",
+		}
 	}
-
-	// Update task status
-	g.updateTaskStatus(task, "searching")
-
+	
 	// Perform search
 	searchResp, err := g.searchClient.Search(ctx, &pb.SearchRequest{
 		Query:      safetyResp.SanitizedText,
@@ -312,15 +433,22 @@ func (g *Gateway) processSearch(task *SearchTask, req SearchRequest) {
 		NumResults: int32(req.NumResults),
 	})
 	if err != nil {
-		g.updateTaskError(task, fmt.Sprintf("Search failed: %v", err))
-		return
+		log.Errorf("Search failed: %v", err)
+		return SearchResponse{
+			Query:  req.Query,
+			Status: "failed",
+			Error:  "Search failed",
+		}
 	}
-
+	
 	if !searchResp.Success {
-		g.updateTaskError(task, searchResp.Error)
-		return
+		return SearchResponse{
+			Query:  req.Query,
+			Status: "failed",
+			Error:  searchResp.Error,
+		}
 	}
-
+	
 	// Convert search results
 	searchResults := make([]SearchResult, len(searchResp.Results))
 	for i, result := range searchResp.Results {
@@ -331,197 +459,158 @@ func (g *Gateway) processSearch(task *SearchTask, req SearchRequest) {
 			DisplayURL: result.DisplayUrl,
 		}
 	}
-
-	// Update task with search results
-	g.tasksMutex.Lock()
-	task.SearchResults = searchResults
-	task.Status = "summarizing"
-	task.UpdatedAt = time.Now()
-	g.tasksMutex.Unlock()
-
-	// Prepare text for summarization
+	
+	// Get AI summary synchronously
 	var textToSummarize string
 	for _, result := range searchResults {
 		textToSummarize += result.Title + " " + result.Snippet + " "
 	}
-
-	// Tokenize text
-	tokenResp, err := g.tokenizerClient.Tokenize(ctx, &pb.TokenizeRequest{
+	
+	// Submit LLM request
+	llmReq := &pb.LLMRequest{
+		Id:        fmt.Sprintf("sync_%d", time.Now().UnixNano()),
 		Text:      textToSummarize,
-		MaxLength: 512,
-	})
+		MaxTokens: 150,
+		Stream:    false,
+		CreatedAt: time.Now().Unix(),
+	}
+	
+	response, err := g.llmClient.ProcessRequest(ctx, llmReq)
 	if err != nil {
-		log.Errorf("Tokenization failed: %v", err)
-		g.updateTaskError(task, fmt.Sprintf("Tokenization failed: %v", err))
-		return
+		log.Errorf("Failed to process LLM request: %v", err)
+		return SearchResponse{
+			Query:         req.Query,
+			Status:        "completed",
+			SearchResults: searchResults,
+			Error:         "AI summarization failed",
+		}
 	}
-
-	if !tokenResp.Success {
-		g.updateTaskError(task, tokenResp.Error)
-		return
-	}
-
-	// Generate summary
-	if req.Streaming {
-		g.generateStreamingSummary(task, tokenResp.Tokens, textToSummarize)
-	} else {
-		g.generateSummary(task, tokenResp.Tokens, textToSummarize)
-	}
-}
-
-func (g *Gateway) generateSummary(task *SearchTask, tokens []int32, originalText string) {
-	ctx := context.Background()
-
-	summaryResp, err := g.inferenceClient.Summarize(ctx, &pb.SummarizeRequest{
-		Tokens:       tokens,
-		OriginalText: originalText,
-		Streaming:    false,
-		MaxLength:    150,
-	})
-
-	if err != nil {
-		g.updateTaskError(task, fmt.Sprintf("Summarization failed: %v", err))
-		return
-	}
-
-	if !summaryResp.Success {
-		g.updateTaskError(task, summaryResp.Error)
-		return
-	}
-
-	// Sanitize output
-	sanitizeResp, err := g.safetyClient.SanitizeOutput(ctx, &pb.SanitizeOutputRequest{
-		Text: summaryResp.Summary,
-	})
-	if err != nil {
-		logger.GetLogger().Errorf("Output sanitization failed: %v", err)
-		g.updateTaskError(task, "Output sanitization failed")
-		return
-	}
-
-	// Update task with summary
-	g.tasksMutex.Lock()
-	task.Summary = sanitizeResp.SanitizedText
-	task.Status = "completed"
-	task.UpdatedAt = time.Now()
-	g.tasksMutex.Unlock()
-}
-
-func (g *Gateway) generateStreamingSummary(task *SearchTask, tokens []int32, originalText string) {
-	ctx := context.Background()
-
-	stream, err := g.inferenceClient.SummarizeStream(ctx, &pb.SummarizeRequest{
-		Tokens:       tokens,
-		OriginalText: originalText,
-		Streaming:    true,
-		MaxLength:    150,
-	})
-
-	if err != nil {
-		g.updateTaskError(task, fmt.Sprintf("Streaming summarization failed: %v", err))
-		return
-	}
-
+	
 	var summary string
+	if response.Error != "" {
+		summary = "Summary unavailable"
+	} else {
+		summary = response.Summary
+		if summary == "" {
+			// Reconstruct from tokens
+			for _, token := range response.Tokens {
+				summary += token
+			}
+		}
+	}
+	
+	return SearchResponse{
+		Query:         req.Query,
+		Status:        "completed",
+		SearchResults: searchResults,
+		Summary:       summary,
+	}
+}
+
+
+// handleStreamingLLMResponse processes a completed LLM response for streaming
+func (g *Gateway) handleStreamingLLMResponse(c *gin.Context, response *pb.LLMResponse) {
+	ctx := context.Background()
+	log := logger.GetLogger()
+
+	// Prepare final summary
+	var finalSummary string
+	if response.Summary != "" {
+		finalSummary = response.Summary
+	} else {
+		// Reconstruct from tokens if streaming
+		for _, token := range response.Tokens {
+			finalSummary += token
+		}
+	}
+
+	// Sanitize the final output
+	sanitizeResp, err := g.safetyClient.SanitizeOutput(ctx, &pb.SanitizeOutputRequest{
+		Text: finalSummary,
+	})
+	if err != nil {
+		log.Errorf("Output sanitization failed: %v", err)
+		c.SSEvent("error", gin.H{"message": "Output sanitization failed"})
+		return
+	}
+
+	// Send final summary
+	c.SSEvent("summary_complete", gin.H{
+		"type": "summary_complete",
+		"summary": sanitizeResp.SanitizedText,
+	})
+	c.Writer.Flush()
+
+	// Send completion event
+	c.SSEvent("complete", gin.H{
+		"type": "complete",
+		"timestamp": time.Now().Unix(),
+	})
+	c.Writer.Flush()
+}
+
+// streamLLMResponse handles direct streaming from LLM service
+func (g *Gateway) streamLLMResponse(c *gin.Context, req *pb.LLMRequest) {
+	ctx := context.Background()
+	log := logger.GetLogger()
+
+	log.Infof("Starting streaming LLM request %s", req.Id)
+
+	// Start streaming request
+	stream, err := g.llmClient.StreamRequest(ctx, req)
+	if err != nil {
+		log.Errorf("Failed to start stream: %v", err)
+		c.SSEvent("error", gin.H{"message": "Failed to start streaming"})
+		return
+	}
+
+	// Process streaming responses
 	for {
-		resp, err := stream.Recv()
+		response, err := stream.Recv()
 		if err != nil {
 			if err.Error() == "EOF" {
-				break
-			}
-			g.updateTaskError(task, fmt.Sprintf("Stream error: %v", err))
-			return
-		}
-
-		if resp.Error != "" {
-			g.updateTaskError(task, resp.Error)
-			return
-		}
-
-		summary += resp.Token
-
-		// Update task with streaming token
-		g.tasksMutex.Lock()
-		task.StreamTokens = append(task.StreamTokens, resp.Token)
-		task.UpdatedAt = time.Now()
-		g.tasksMutex.Unlock()
-
-		if resp.IsFinal {
-			break
-		}
-	}
-
-	// Sanitize final output
-	sanitizeResp, err := g.safetyClient.SanitizeOutput(ctx, &pb.SanitizeOutputRequest{
-		Text: summary,
-	})
-	if err != nil {
-		logger.GetLogger().Errorf("Output sanitization failed: %v", err)
-		g.updateTaskError(task, "Output sanitization failed")
-		return
-	}
-
-	// Update task with final summary
-	g.tasksMutex.Lock()
-	task.Summary = sanitizeResp.SanitizedText
-	task.Status = "completed"
-	task.UpdatedAt = time.Now()
-	g.tasksMutex.Unlock()
-}
-
-func (g *Gateway) updateTaskStatus(task *SearchTask, status string) {
-	g.tasksMutex.Lock()
-	task.Status = status
-	task.UpdatedAt = time.Now()
-	g.tasksMutex.Unlock()
-}
-
-func (g *Gateway) updateTaskError(task *SearchTask, errorMsg string) {
-	g.tasksMutex.Lock()
-	task.Status = "failed"
-	task.Error = errorMsg
-	task.UpdatedAt = time.Now()
-	g.tasksMutex.Unlock()
-}
-
-func (g *Gateway) streamTaskUpdates(c *gin.Context, task *SearchTask) {
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	lastTokenCount := 0
-
-	for {
-		select {
-		case <-ticker.C:
-			g.tasksMutex.RLock()
-
-			// Send status update
-			update := map[string]interface{}{
-				"task_id":        task.ID,
-				"status":         task.Status,
-				"search_results": task.SearchResults,
-				"summary":        task.Summary,
-				"error":          task.Error,
-				"updated_at":     task.UpdatedAt,
-			}
-
-			// Send new tokens if streaming
-			if task.Streaming && len(task.StreamTokens) > lastTokenCount {
-				newTokens := task.StreamTokens[lastTokenCount:]
-				update["new_tokens"] = newTokens
-				lastTokenCount = len(task.StreamTokens)
-			}
-
-			g.tasksMutex.RUnlock()
-
-			// Send SSE event
-			c.SSEvent("update", update)
-			c.Writer.Flush()
-
-			// Close connection if task is completed or failed
-			if task.Status == "completed" || task.Status == "failed" {
+				// Stream completed normally
+				c.SSEvent("complete", gin.H{
+					"message": "Stream completed",
+				})
 				return
 			}
+			log.Errorf("Stream receive error: %v", err)
+			c.SSEvent("error", gin.H{"message": "Stream error"})
+			return
+		}
+
+		// Handle error in response
+		if response.Error != "" {
+			c.SSEvent("error", gin.H{"message": response.Error})
+			return
+		}
+
+		// Send token to client
+		if response.Token != "" {
+			c.SSEvent("token", gin.H{
+				"token":    response.Token,
+				"position": response.Position,
+			})
+			c.Writer.Flush()
+		}
+
+		// Check if final
+		if response.IsFinal {
+			c.SSEvent("complete", gin.H{
+				"summary": response.Token,
+			})
+			return
 		}
 	}
+}
+
+
+// checkSystemCapacity checks if the system can handle more requests
+func (g *Gateway) checkSystemCapacity() bool {
+	// Simple capacity check - can be enhanced with metrics
+	// For now, we'll rely on the LLM service's internal backpressure
+	// The service will return appropriate errors when overloaded
+	// TODO: Add health check to LLM service for more sophisticated backpressure
+	return true
 }

@@ -332,9 +332,7 @@
     </div>
 
     <script>
-        let currentTaskId = null;
         let eventSource = null;
-        let pollingInterval = null;
         let isStreamingMode = false;
 
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
@@ -364,34 +362,37 @@
             window._hasStreamedTokens = false;
             
             try {
-                // Start search
-                const response = await fetch('/api/v1/search', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query,
-                        safe_search: safeSearch,
-                        streaming,
-                        num_results: numResults
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error || 'Search failed');
-                }
-
-                currentTaskId = data.task_id;
-                updateStatus('pending', 'Search initiated...');
-
-                // Start monitoring
                 if (streaming) {
-                    startEventSourceStream();
+                    // Use streaming API
+                    startDirectStreaming(query, safeSearch, numResults);
                 } else {
-                    startPolling();
+                    // Use non-streaming API
+                    const response = await fetch('/api/v1/search', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            query,
+                            safe_search: safeSearch,
+                            num_results: numResults
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Search failed');
+                    }
+
+                    // Display results immediately for non-streaming
+                    if (data.search_results) {
+                        displaySearchResults(data.search_results);
+                    }
+                    if (data.summary) {
+                        displaySummary(data.summary);
+                    }
+                    resetUI();
                 }
 
             } catch (error) {
@@ -400,50 +401,129 @@
             }
         }
 
-        function startEventSourceStream() {
-            const streamUrl = `/api/v1/search/stream/${currentTaskId}`;
+        function startDirectStreaming(query, safeSearch, numResults) {
+            // Use the correct streaming endpoint with query parameters
+            const streamUrl = `/api/v1/search?streaming=true&query=${encodeURIComponent(query)}&safe_search=${safeSearch}&num_results=${numResults}`;
             
             eventSource = new EventSource(streamUrl);
             
             eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleTaskUpdate(data);
+                try {
+                    const data = JSON.parse(event.data);
+                    handleStreamingUpdate(data);
+                } catch (error) {
+                    console.error('Error parsing streaming data:', error);
+                }
             };
             
             eventSource.onerror = (error) => {
                 console.error('EventSource error:', error);
-                // Fallback to polling
-                startPolling();
+                updateStatus('failed', 'Streaming connection failed');
+                showError('Streaming connection failed');
+                resetUI();
             };
             
-            eventSource.addEventListener('update', (event) => {
+            // Handle different event types
+            eventSource.addEventListener('status', (event) => {
                 const data = JSON.parse(event.data);
-                handleTaskUpdate(data);
+                handleStreamingUpdate(data);
+            });
+            
+            eventSource.addEventListener('search_results', (event) => {
+                const data = JSON.parse(event.data);
+                handleStreamingUpdate(data);
+            });
+            
+            eventSource.addEventListener('token', (event) => {
+                const data = JSON.parse(event.data);
+                handleStreamingUpdate(data);
+            });
+            
+            eventSource.addEventListener('summary', (event) => {
+                const data = JSON.parse(event.data);
+                handleStreamingUpdate(data);
+            });
+            
+            eventSource.addEventListener('complete', (event) => {
+                const data = JSON.parse(event.data);
+                handleStreamingUpdate(data);
+                eventSource.close();
+                resetUI();
+            });
+            
+            eventSource.addEventListener('error', (event) => {
+                const data = JSON.parse(event.data);
+                updateStatus('failed', 'Error: ' + data.message);
+                showError('Error: ' + data.message);
+                eventSource.close();
+                resetUI();
             });
         }
 
-        function startPolling() {
-            pollingInterval = setInterval(async () => {
-                try {
-                    const response = await fetch(`/api/v1/search/status/${currentTaskId}`);
-                    const data = await response.json();
-                    
-                    if (response.ok) {
-                        handleTaskUpdate(data);
-                        
-                        if (data.status === 'completed' || data.status === 'failed') {
-                            clearInterval(pollingInterval);
-                            resetUI();
-                        }
-                    }
-                } catch (error) {
-                    console.error('Polling error:', error);
+        function handleStreamingUpdate(data) {
+            console.log('Streaming update:', data);
+            
+            // Handle different types of streaming updates
+            if (data.type === 'started') {
+                updateStatus('started', 'Search started...');
+            } else if (data.type === 'validating') {
+                updateStatus('validating', 'Validating query...');
+            } else if (data.type === 'searching') {
+                updateStatus('searching', 'Searching the web...');
+            } else if (data.type === 'search_results') {
+                updateStatus('processing', 'Found search results, analyzing...');
+                if (data.results) {
+                    displaySearchResults(data.results);
                 }
-            }, 1000);
+            } else if (data.type === 'summarizing') {
+                updateStatus('summarizing', 'AI is generating summary...');
+                document.getElementById('streamingIndicator').style.display = 'inline-block';
+            } else if (data.type === 'token') {
+                // Append streaming token to summary
+                appendStreamingToken(data.token);
+            } else if (data.type === 'summary') {
+                // Final summary received
+                document.getElementById('streamingIndicator').style.display = 'none';
+                updateStatus('completed', 'Summary completed');
+            } else if (data.type === 'complete') {
+                // Stream completed
+                document.getElementById('streamingIndicator').style.display = 'none';
+                updateStatus('completed', 'Search completed');
+            }
+        }
+        
+        function appendStreamingToken(token) {
+            const summaryContent = document.getElementById('summaryContent');
+            summaryContent.textContent += token;
+            document.getElementById('aiSummary').style.display = 'block';
+            window._hasStreamedTokens = true;
+        }
+        
+        function displaySearchResults(results) {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = '';
+            
+            results.forEach(result => {
+                const resultElement = document.createElement('div');
+                resultElement.className = 'result-item';
+                resultElement.innerHTML = `
+                    <h3><a href="${result.url}" target="_blank">${result.title}</a></h3>
+                    <p class="result-url">${result.display_url}</p>
+                    <p class="result-snippet">${result.snippet}</p>
+                `;
+                container.appendChild(resultElement);
+            });
+            
+            container.style.display = 'block';
+        }
+        
+        function displaySummary(summary) {
+            document.getElementById('summaryContent').textContent = summary;
+            document.getElementById('aiSummary').style.display = 'block';
         }
 
         function handleTaskUpdate(data) {
-            // Update status
+            // Legacy function - kept for compatibility
             updateStatus(data.status, getStatusMessage(data.status));
             
             // Show search results
@@ -565,11 +645,6 @@
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
-            }
-            
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
             }
             
             // Reset streaming mode flag

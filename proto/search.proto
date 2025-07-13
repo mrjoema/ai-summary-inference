@@ -10,11 +10,6 @@ service SearchService {
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
-// Tokenizer service definitions
-service TokenizerService {
-  rpc Tokenize(TokenizeRequest) returns (TokenizeResponse);
-  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
-}
 
 // Inference service definitions
 service InferenceService {
@@ -27,6 +22,14 @@ service InferenceService {
 service SafetyService {
   rpc ValidateInput(ValidateInputRequest) returns (ValidateInputResponse);
   rpc SanitizeOutput(SanitizeOutputRequest) returns (SanitizeOutputResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// LLM Orchestrator service definitions
+service LLMOrchestratorService {
+  rpc ProcessRequest(LLMRequest) returns (LLMResponse);
+  rpc StreamRequest(LLMRequest) returns (stream LLMStreamResponse);
+  rpc GetStatus(LLMStatusRequest) returns (LLMStatusResponse);
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
@@ -60,26 +63,12 @@ message SearchResult {
   string display_url = 4;
 }
 
-// Tokenizer messages
-message TokenizeRequest {
-  string text = 1;
-  int32 max_length = 2;
-}
-
-message TokenizeResponse {
-  repeated int32 tokens = 1;
-  int32 token_count = 2;
-  string truncated_text = 3;
-  bool success = 4;
-  string error = 5;
-}
 
 // Inference messages
 message SummarizeRequest {
-  repeated int32 tokens = 1;
-  string original_text = 2;
-  bool streaming = 3;
-  int32 max_length = 4;
+  string original_text = 1;
+  bool streaming = 2;
+  int32 max_length = 3;
 }
 
 message SummarizeResponse {
@@ -119,4 +108,41 @@ message SanitizeOutputResponse {
   string sanitized_text = 1;
   repeated string warnings = 2;
   string error = 3;
+}
+
+// LLM Orchestrator messages
+message LLMRequest {
+  string id = 1;
+  string text = 2;
+  int32 max_tokens = 3;
+  bool stream = 4;
+  int64 created_at = 5;
+}
+
+message LLMResponse {
+  string id = 1;
+  repeated string tokens = 2;
+  string summary = 3;
+  string error = 4;
+  bool complete = 5;
+}
+
+message LLMStatusRequest {
+  string request_id = 1;
+}
+
+message LLMStatusResponse {
+  string request_id = 1;
+  string status = 2; // pending, processing, completed, failed
+  int32 queue_position = 3;
+  int32 estimated_wait_time = 4; // seconds
+  string error = 5;
+}
+
+message LLMStreamResponse {
+  string id = 1;
+  string token = 2;
+  bool is_final = 3;
+  string error = 4;
+  int32 position = 5;
 } 

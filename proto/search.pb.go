@@ -315,149 +315,19 @@ func (x *SearchResult) GetDisplayUrl() string {
 	return ""
 }
 
-// Tokenizer messages
-type TokenizeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	MaxLength     int32                  `protobuf:"varint,2,opt,name=max_length,json=maxLength,proto3" json:"max_length,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TokenizeRequest) Reset() {
-	*x = TokenizeRequest{}
-	mi := &file_proto_search_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TokenizeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TokenizeRequest) ProtoMessage() {}
-
-func (x *TokenizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TokenizeRequest.ProtoReflect.Descriptor instead.
-func (*TokenizeRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *TokenizeRequest) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
-}
-
-func (x *TokenizeRequest) GetMaxLength() int32 {
-	if x != nil {
-		return x.MaxLength
-	}
-	return 0
-}
-
-type TokenizeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tokens        []int32                `protobuf:"varint,1,rep,packed,name=tokens,proto3" json:"tokens,omitempty"`
-	TokenCount    int32                  `protobuf:"varint,2,opt,name=token_count,json=tokenCount,proto3" json:"token_count,omitempty"`
-	TruncatedText string                 `protobuf:"bytes,3,opt,name=truncated_text,json=truncatedText,proto3" json:"truncated_text,omitempty"`
-	Success       bool                   `protobuf:"varint,4,opt,name=success,proto3" json:"success,omitempty"`
-	Error         string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TokenizeResponse) Reset() {
-	*x = TokenizeResponse{}
-	mi := &file_proto_search_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TokenizeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TokenizeResponse) ProtoMessage() {}
-
-func (x *TokenizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TokenizeResponse.ProtoReflect.Descriptor instead.
-func (*TokenizeResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *TokenizeResponse) GetTokens() []int32 {
-	if x != nil {
-		return x.Tokens
-	}
-	return nil
-}
-
-func (x *TokenizeResponse) GetTokenCount() int32 {
-	if x != nil {
-		return x.TokenCount
-	}
-	return 0
-}
-
-func (x *TokenizeResponse) GetTruncatedText() string {
-	if x != nil {
-		return x.TruncatedText
-	}
-	return ""
-}
-
-func (x *TokenizeResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *TokenizeResponse) GetError() string {
-	if x != nil {
-		return x.Error
-	}
-	return ""
-}
-
 // Inference messages
 type SummarizeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tokens        []int32                `protobuf:"varint,1,rep,packed,name=tokens,proto3" json:"tokens,omitempty"`
-	OriginalText  string                 `protobuf:"bytes,2,opt,name=original_text,json=originalText,proto3" json:"original_text,omitempty"`
-	Streaming     bool                   `protobuf:"varint,3,opt,name=streaming,proto3" json:"streaming,omitempty"`
-	MaxLength     int32                  `protobuf:"varint,4,opt,name=max_length,json=maxLength,proto3" json:"max_length,omitempty"`
+	OriginalText  string                 `protobuf:"bytes,1,opt,name=original_text,json=originalText,proto3" json:"original_text,omitempty"`
+	Streaming     bool                   `protobuf:"varint,2,opt,name=streaming,proto3" json:"streaming,omitempty"`
+	MaxLength     int32                  `protobuf:"varint,3,opt,name=max_length,json=maxLength,proto3" json:"max_length,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SummarizeRequest) Reset() {
 	*x = SummarizeRequest{}
-	mi := &file_proto_search_proto_msgTypes[7]
+	mi := &file_proto_search_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +339,7 @@ func (x *SummarizeRequest) String() string {
 func (*SummarizeRequest) ProtoMessage() {}
 
 func (x *SummarizeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[7]
+	mi := &file_proto_search_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,14 +352,7 @@ func (x *SummarizeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummarizeRequest.ProtoReflect.Descriptor instead.
 func (*SummarizeRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *SummarizeRequest) GetTokens() []int32 {
-	if x != nil {
-		return x.Tokens
-	}
-	return nil
+	return file_proto_search_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SummarizeRequest) GetOriginalText() string {
@@ -526,7 +389,7 @@ type SummarizeResponse struct {
 
 func (x *SummarizeResponse) Reset() {
 	*x = SummarizeResponse{}
-	mi := &file_proto_search_proto_msgTypes[8]
+	mi := &file_proto_search_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -538,7 +401,7 @@ func (x *SummarizeResponse) String() string {
 func (*SummarizeResponse) ProtoMessage() {}
 
 func (x *SummarizeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[8]
+	mi := &file_proto_search_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -551,7 +414,7 @@ func (x *SummarizeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummarizeResponse.ProtoReflect.Descriptor instead.
 func (*SummarizeResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{8}
+	return file_proto_search_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SummarizeResponse) GetSummary() string {
@@ -601,7 +464,7 @@ type SummarizeStreamResponse struct {
 
 func (x *SummarizeStreamResponse) Reset() {
 	*x = SummarizeStreamResponse{}
-	mi := &file_proto_search_proto_msgTypes[9]
+	mi := &file_proto_search_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -613,7 +476,7 @@ func (x *SummarizeStreamResponse) String() string {
 func (*SummarizeStreamResponse) ProtoMessage() {}
 
 func (x *SummarizeStreamResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[9]
+	mi := &file_proto_search_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -626,7 +489,7 @@ func (x *SummarizeStreamResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummarizeStreamResponse.ProtoReflect.Descriptor instead.
 func (*SummarizeStreamResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{9}
+	return file_proto_search_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SummarizeStreamResponse) GetToken() string {
@@ -669,7 +532,7 @@ type ValidateInputRequest struct {
 
 func (x *ValidateInputRequest) Reset() {
 	*x = ValidateInputRequest{}
-	mi := &file_proto_search_proto_msgTypes[10]
+	mi := &file_proto_search_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -681,7 +544,7 @@ func (x *ValidateInputRequest) String() string {
 func (*ValidateInputRequest) ProtoMessage() {}
 
 func (x *ValidateInputRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[10]
+	mi := &file_proto_search_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -694,7 +557,7 @@ func (x *ValidateInputRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateInputRequest.ProtoReflect.Descriptor instead.
 func (*ValidateInputRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{10}
+	return file_proto_search_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ValidateInputRequest) GetText() string {
@@ -730,7 +593,7 @@ type ValidateInputResponse struct {
 
 func (x *ValidateInputResponse) Reset() {
 	*x = ValidateInputResponse{}
-	mi := &file_proto_search_proto_msgTypes[11]
+	mi := &file_proto_search_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -742,7 +605,7 @@ func (x *ValidateInputResponse) String() string {
 func (*ValidateInputResponse) ProtoMessage() {}
 
 func (x *ValidateInputResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[11]
+	mi := &file_proto_search_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +618,7 @@ func (x *ValidateInputResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValidateInputResponse.ProtoReflect.Descriptor instead.
 func (*ValidateInputResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{11}
+	return file_proto_search_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ValidateInputResponse) GetIsSafe() bool {
@@ -795,7 +658,7 @@ type SanitizeOutputRequest struct {
 
 func (x *SanitizeOutputRequest) Reset() {
 	*x = SanitizeOutputRequest{}
-	mi := &file_proto_search_proto_msgTypes[12]
+	mi := &file_proto_search_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -807,7 +670,7 @@ func (x *SanitizeOutputRequest) String() string {
 func (*SanitizeOutputRequest) ProtoMessage() {}
 
 func (x *SanitizeOutputRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[12]
+	mi := &file_proto_search_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -820,7 +683,7 @@ func (x *SanitizeOutputRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SanitizeOutputRequest.ProtoReflect.Descriptor instead.
 func (*SanitizeOutputRequest) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{12}
+	return file_proto_search_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SanitizeOutputRequest) GetText() string {
@@ -841,7 +704,7 @@ type SanitizeOutputResponse struct {
 
 func (x *SanitizeOutputResponse) Reset() {
 	*x = SanitizeOutputResponse{}
-	mi := &file_proto_search_proto_msgTypes[13]
+	mi := &file_proto_search_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -853,7 +716,7 @@ func (x *SanitizeOutputResponse) String() string {
 func (*SanitizeOutputResponse) ProtoMessage() {}
 
 func (x *SanitizeOutputResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_search_proto_msgTypes[13]
+	mi := &file_proto_search_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -866,7 +729,7 @@ func (x *SanitizeOutputResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SanitizeOutputResponse.ProtoReflect.Descriptor instead.
 func (*SanitizeOutputResponse) Descriptor() ([]byte, []int) {
-	return file_proto_search_proto_rawDescGZIP(), []int{13}
+	return file_proto_search_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SanitizeOutputResponse) GetSanitizedText() string {
@@ -888,6 +751,355 @@ func (x *SanitizeOutputResponse) GetError() string {
 		return x.Error
 	}
 	return ""
+}
+
+// LLM Orchestrator messages
+type LLMRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	MaxTokens     int32                  `protobuf:"varint,3,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"`
+	Stream        bool                   `protobuf:"varint,4,opt,name=stream,proto3" json:"stream,omitempty"`
+	CreatedAt     int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LLMRequest) Reset() {
+	*x = LLMRequest{}
+	mi := &file_proto_search_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LLMRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LLMRequest) ProtoMessage() {}
+
+func (x *LLMRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LLMRequest.ProtoReflect.Descriptor instead.
+func (*LLMRequest) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *LLMRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *LLMRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *LLMRequest) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+func (x *LLMRequest) GetStream() bool {
+	if x != nil {
+		return x.Stream
+	}
+	return false
+}
+
+func (x *LLMRequest) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+type LLMResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Tokens        []string               `protobuf:"bytes,2,rep,name=tokens,proto3" json:"tokens,omitempty"`
+	Summary       string                 `protobuf:"bytes,3,opt,name=summary,proto3" json:"summary,omitempty"`
+	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	Complete      bool                   `protobuf:"varint,5,opt,name=complete,proto3" json:"complete,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LLMResponse) Reset() {
+	*x = LLMResponse{}
+	mi := &file_proto_search_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LLMResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LLMResponse) ProtoMessage() {}
+
+func (x *LLMResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LLMResponse.ProtoReflect.Descriptor instead.
+func (*LLMResponse) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *LLMResponse) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *LLMResponse) GetTokens() []string {
+	if x != nil {
+		return x.Tokens
+	}
+	return nil
+}
+
+func (x *LLMResponse) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
+func (x *LLMResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *LLMResponse) GetComplete() bool {
+	if x != nil {
+		return x.Complete
+	}
+	return false
+}
+
+type LLMStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LLMStatusRequest) Reset() {
+	*x = LLMStatusRequest{}
+	mi := &file_proto_search_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LLMStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LLMStatusRequest) ProtoMessage() {}
+
+func (x *LLMStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LLMStatusRequest.ProtoReflect.Descriptor instead.
+func (*LLMStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *LLMStatusRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+type LLMStatusResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	RequestId         string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status            string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // pending, processing, completed, failed
+	QueuePosition     int32                  `protobuf:"varint,3,opt,name=queue_position,json=queuePosition,proto3" json:"queue_position,omitempty"`
+	EstimatedWaitTime int32                  `protobuf:"varint,4,opt,name=estimated_wait_time,json=estimatedWaitTime,proto3" json:"estimated_wait_time,omitempty"` // seconds
+	Error             string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *LLMStatusResponse) Reset() {
+	*x = LLMStatusResponse{}
+	mi := &file_proto_search_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LLMStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LLMStatusResponse) ProtoMessage() {}
+
+func (x *LLMStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LLMStatusResponse.ProtoReflect.Descriptor instead.
+func (*LLMStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *LLMStatusResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *LLMStatusResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *LLMStatusResponse) GetQueuePosition() int32 {
+	if x != nil {
+		return x.QueuePosition
+	}
+	return 0
+}
+
+func (x *LLMStatusResponse) GetEstimatedWaitTime() int32 {
+	if x != nil {
+		return x.EstimatedWaitTime
+	}
+	return 0
+}
+
+func (x *LLMStatusResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type LLMStreamResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	IsFinal       bool                   `protobuf:"varint,3,opt,name=is_final,json=isFinal,proto3" json:"is_final,omitempty"`
+	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	Position      int32                  `protobuf:"varint,5,opt,name=position,proto3" json:"position,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LLMStreamResponse) Reset() {
+	*x = LLMStreamResponse{}
+	mi := &file_proto_search_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LLMStreamResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LLMStreamResponse) ProtoMessage() {}
+
+func (x *LLMStreamResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_search_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LLMStreamResponse.ProtoReflect.Descriptor instead.
+func (*LLMStreamResponse) Descriptor() ([]byte, []int) {
+	return file_proto_search_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *LLMStreamResponse) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *LLMStreamResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *LLMStreamResponse) GetIsFinal() bool {
+	if x != nil {
+		return x.IsFinal
+	}
+	return false
+}
+
+func (x *LLMStreamResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *LLMStreamResponse) GetPosition() int32 {
+	if x != nil {
+		return x.Position
+	}
+	return 0
 }
 
 var File_proto_search_proto protoreflect.FileDescriptor
@@ -916,24 +1128,12 @@ const file_proto_search_proto_rawDesc = "" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x18\n" +
 	"\asnippet\x18\x03 \x01(\tR\asnippet\x12\x1f\n" +
 	"\vdisplay_url\x18\x04 \x01(\tR\n" +
-	"displayUrl\"D\n" +
-	"\x0fTokenizeRequest\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1d\n" +
+	"displayUrl\"t\n" +
+	"\x10SummarizeRequest\x12#\n" +
+	"\roriginal_text\x18\x01 \x01(\tR\foriginalText\x12\x1c\n" +
+	"\tstreaming\x18\x02 \x01(\bR\tstreaming\x12\x1d\n" +
 	"\n" +
-	"max_length\x18\x02 \x01(\x05R\tmaxLength\"\xa2\x01\n" +
-	"\x10TokenizeResponse\x12\x16\n" +
-	"\x06tokens\x18\x01 \x03(\x05R\x06tokens\x12\x1f\n" +
-	"\vtoken_count\x18\x02 \x01(\x05R\n" +
-	"tokenCount\x12%\n" +
-	"\x0etruncated_text\x18\x03 \x01(\tR\rtruncatedText\x12\x18\n" +
-	"\asuccess\x18\x04 \x01(\bR\asuccess\x12\x14\n" +
-	"\x05error\x18\x05 \x01(\tR\x05error\"\x8c\x01\n" +
-	"\x10SummarizeRequest\x12\x16\n" +
-	"\x06tokens\x18\x01 \x03(\x05R\x06tokens\x12#\n" +
-	"\roriginal_text\x18\x02 \x01(\tR\foriginalText\x12\x1c\n" +
-	"\tstreaming\x18\x03 \x01(\bR\tstreaming\x12\x1d\n" +
-	"\n" +
-	"max_length\x18\x04 \x01(\x05R\tmaxLength\"\x9e\x01\n" +
+	"max_length\x18\x03 \x01(\x05R\tmaxLength\"\x9e\x01\n" +
 	"\x11SummarizeResponse\x12\x18\n" +
 	"\asummary\x18\x01 \x01(\tR\asummary\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x14\n" +
@@ -963,12 +1163,40 @@ const file_proto_search_proto_rawDesc = "" +
 	"\x16SanitizeOutputResponse\x12%\n" +
 	"\x0esanitized_text\x18\x01 \x01(\tR\rsanitizedText\x12\x1a\n" +
 	"\bwarnings\x18\x02 \x03(\tR\bwarnings\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05error2\x90\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"\x86\x01\n" +
+	"\n" +
+	"LLMRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\x03 \x01(\x05R\tmaxTokens\x12\x16\n" +
+	"\x06stream\x18\x04 \x01(\bR\x06stream\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\x03R\tcreatedAt\"\x81\x01\n" +
+	"\vLLMResponse\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06tokens\x18\x02 \x03(\tR\x06tokens\x12\x18\n" +
+	"\asummary\x18\x03 \x01(\tR\asummary\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\x12\x1a\n" +
+	"\bcomplete\x18\x05 \x01(\bR\bcomplete\"1\n" +
+	"\x10LLMStatusRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\"\xb7\x01\n" +
+	"\x11LLMStatusResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12%\n" +
+	"\x0equeue_position\x18\x03 \x01(\x05R\rqueuePosition\x12.\n" +
+	"\x13estimated_wait_time\x18\x04 \x01(\x05R\x11estimatedWaitTime\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"\x86\x01\n" +
+	"\x11LLMStreamResponse\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12\x19\n" +
+	"\bis_final\x18\x03 \x01(\bR\aisFinal\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\x12\x1a\n" +
+	"\bposition\x18\x05 \x01(\x05R\bposition2\x90\x01\n" +
 	"\rSearchService\x127\n" +
 	"\x06Search\x12\x15.search.SearchRequest\x1a\x16.search.SearchResponse\x12F\n" +
-	"\vHealthCheck\x12\x1a.search.HealthCheckRequest\x1a\x1b.search.HealthCheckResponse2\x99\x01\n" +
-	"\x10TokenizerService\x12=\n" +
-	"\bTokenize\x12\x17.search.TokenizeRequest\x1a\x18.search.TokenizeResponse\x12F\n" +
 	"\vHealthCheck\x12\x1a.search.HealthCheckRequest\x1a\x1b.search.HealthCheckResponse2\xec\x01\n" +
 	"\x10InferenceService\x12@\n" +
 	"\tSummarize\x12\x18.search.SummarizeRequest\x1a\x19.search.SummarizeResponse\x12N\n" +
@@ -977,6 +1205,11 @@ const file_proto_search_proto_rawDesc = "" +
 	"\rSafetyService\x12L\n" +
 	"\rValidateInput\x12\x1c.search.ValidateInputRequest\x1a\x1d.search.ValidateInputResponse\x12O\n" +
 	"\x0eSanitizeOutput\x12\x1d.search.SanitizeOutputRequest\x1a\x1e.search.SanitizeOutputResponse\x12F\n" +
+	"\vHealthCheck\x12\x1a.search.HealthCheckRequest\x1a\x1b.search.HealthCheckResponse2\x9f\x02\n" +
+	"\x16LLMOrchestratorService\x129\n" +
+	"\x0eProcessRequest\x12\x12.search.LLMRequest\x1a\x13.search.LLMResponse\x12@\n" +
+	"\rStreamRequest\x12\x12.search.LLMRequest\x1a\x19.search.LLMStreamResponse0\x01\x12@\n" +
+	"\tGetStatus\x12\x18.search.LLMStatusRequest\x1a\x19.search.LLMStatusResponse\x12F\n" +
 	"\vHealthCheck\x12\x1a.search.HealthCheckRequest\x1a\x1b.search.HealthCheckResponseB\tZ\a./protob\x06proto3"
 
 var (
@@ -991,47 +1224,54 @@ func file_proto_search_proto_rawDescGZIP() []byte {
 	return file_proto_search_proto_rawDescData
 }
 
-var file_proto_search_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_proto_search_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_proto_search_proto_goTypes = []any{
 	(*HealthCheckRequest)(nil),      // 0: search.HealthCheckRequest
 	(*HealthCheckResponse)(nil),     // 1: search.HealthCheckResponse
 	(*SearchRequest)(nil),           // 2: search.SearchRequest
 	(*SearchResponse)(nil),          // 3: search.SearchResponse
 	(*SearchResult)(nil),            // 4: search.SearchResult
-	(*TokenizeRequest)(nil),         // 5: search.TokenizeRequest
-	(*TokenizeResponse)(nil),        // 6: search.TokenizeResponse
-	(*SummarizeRequest)(nil),        // 7: search.SummarizeRequest
-	(*SummarizeResponse)(nil),       // 8: search.SummarizeResponse
-	(*SummarizeStreamResponse)(nil), // 9: search.SummarizeStreamResponse
-	(*ValidateInputRequest)(nil),    // 10: search.ValidateInputRequest
-	(*ValidateInputResponse)(nil),   // 11: search.ValidateInputResponse
-	(*SanitizeOutputRequest)(nil),   // 12: search.SanitizeOutputRequest
-	(*SanitizeOutputResponse)(nil),  // 13: search.SanitizeOutputResponse
+	(*SummarizeRequest)(nil),        // 5: search.SummarizeRequest
+	(*SummarizeResponse)(nil),       // 6: search.SummarizeResponse
+	(*SummarizeStreamResponse)(nil), // 7: search.SummarizeStreamResponse
+	(*ValidateInputRequest)(nil),    // 8: search.ValidateInputRequest
+	(*ValidateInputResponse)(nil),   // 9: search.ValidateInputResponse
+	(*SanitizeOutputRequest)(nil),   // 10: search.SanitizeOutputRequest
+	(*SanitizeOutputResponse)(nil),  // 11: search.SanitizeOutputResponse
+	(*LLMRequest)(nil),              // 12: search.LLMRequest
+	(*LLMResponse)(nil),             // 13: search.LLMResponse
+	(*LLMStatusRequest)(nil),        // 14: search.LLMStatusRequest
+	(*LLMStatusResponse)(nil),       // 15: search.LLMStatusResponse
+	(*LLMStreamResponse)(nil),       // 16: search.LLMStreamResponse
 }
 var file_proto_search_proto_depIdxs = []int32{
 	4,  // 0: search.SearchResponse.results:type_name -> search.SearchResult
 	2,  // 1: search.SearchService.Search:input_type -> search.SearchRequest
 	0,  // 2: search.SearchService.HealthCheck:input_type -> search.HealthCheckRequest
-	5,  // 3: search.TokenizerService.Tokenize:input_type -> search.TokenizeRequest
-	0,  // 4: search.TokenizerService.HealthCheck:input_type -> search.HealthCheckRequest
-	7,  // 5: search.InferenceService.Summarize:input_type -> search.SummarizeRequest
-	7,  // 6: search.InferenceService.SummarizeStream:input_type -> search.SummarizeRequest
-	0,  // 7: search.InferenceService.HealthCheck:input_type -> search.HealthCheckRequest
-	10, // 8: search.SafetyService.ValidateInput:input_type -> search.ValidateInputRequest
-	12, // 9: search.SafetyService.SanitizeOutput:input_type -> search.SanitizeOutputRequest
-	0,  // 10: search.SafetyService.HealthCheck:input_type -> search.HealthCheckRequest
-	3,  // 11: search.SearchService.Search:output_type -> search.SearchResponse
-	1,  // 12: search.SearchService.HealthCheck:output_type -> search.HealthCheckResponse
-	6,  // 13: search.TokenizerService.Tokenize:output_type -> search.TokenizeResponse
-	1,  // 14: search.TokenizerService.HealthCheck:output_type -> search.HealthCheckResponse
-	8,  // 15: search.InferenceService.Summarize:output_type -> search.SummarizeResponse
-	9,  // 16: search.InferenceService.SummarizeStream:output_type -> search.SummarizeStreamResponse
+	5,  // 3: search.InferenceService.Summarize:input_type -> search.SummarizeRequest
+	5,  // 4: search.InferenceService.SummarizeStream:input_type -> search.SummarizeRequest
+	0,  // 5: search.InferenceService.HealthCheck:input_type -> search.HealthCheckRequest
+	8,  // 6: search.SafetyService.ValidateInput:input_type -> search.ValidateInputRequest
+	10, // 7: search.SafetyService.SanitizeOutput:input_type -> search.SanitizeOutputRequest
+	0,  // 8: search.SafetyService.HealthCheck:input_type -> search.HealthCheckRequest
+	12, // 9: search.LLMOrchestratorService.ProcessRequest:input_type -> search.LLMRequest
+	12, // 10: search.LLMOrchestratorService.StreamRequest:input_type -> search.LLMRequest
+	14, // 11: search.LLMOrchestratorService.GetStatus:input_type -> search.LLMStatusRequest
+	0,  // 12: search.LLMOrchestratorService.HealthCheck:input_type -> search.HealthCheckRequest
+	3,  // 13: search.SearchService.Search:output_type -> search.SearchResponse
+	1,  // 14: search.SearchService.HealthCheck:output_type -> search.HealthCheckResponse
+	6,  // 15: search.InferenceService.Summarize:output_type -> search.SummarizeResponse
+	7,  // 16: search.InferenceService.SummarizeStream:output_type -> search.SummarizeStreamResponse
 	1,  // 17: search.InferenceService.HealthCheck:output_type -> search.HealthCheckResponse
-	11, // 18: search.SafetyService.ValidateInput:output_type -> search.ValidateInputResponse
-	13, // 19: search.SafetyService.SanitizeOutput:output_type -> search.SanitizeOutputResponse
+	9,  // 18: search.SafetyService.ValidateInput:output_type -> search.ValidateInputResponse
+	11, // 19: search.SafetyService.SanitizeOutput:output_type -> search.SanitizeOutputResponse
 	1,  // 20: search.SafetyService.HealthCheck:output_type -> search.HealthCheckResponse
-	11, // [11:21] is the sub-list for method output_type
-	1,  // [1:11] is the sub-list for method input_type
+	13, // 21: search.LLMOrchestratorService.ProcessRequest:output_type -> search.LLMResponse
+	16, // 22: search.LLMOrchestratorService.StreamRequest:output_type -> search.LLMStreamResponse
+	15, // 23: search.LLMOrchestratorService.GetStatus:output_type -> search.LLMStatusResponse
+	1,  // 24: search.LLMOrchestratorService.HealthCheck:output_type -> search.HealthCheckResponse
+	13, // [13:25] is the sub-list for method output_type
+	1,  // [1:13] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -1048,7 +1288,7 @@ func file_proto_search_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_search_proto_rawDesc), len(file_proto_search_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   4,
 		},
