@@ -35,10 +35,11 @@ type RequestTracker struct {
 	Response      *LLMResponse
 }
 
-// NewLLMService creates a new LLM service
+// NewLLMService creates a new enterprise LLM service
 func NewLLMService(cfg *config.Config) (*LLMService, error) {
-	// Create LLM orchestrator with direct gRPC streaming
+	// Create enterprise LLM orchestrator with tokenization
 	orchestrator, err := NewLLMOrchestrator(
+		cfg.GetTokenizerAddress(), // Enterprise tokenizer
 		cfg.GetInferenceAddress(),
 		cfg.LLM.MaxWorkers, // Now used as max concurrent requests
 		nil, // Will be set after service creation

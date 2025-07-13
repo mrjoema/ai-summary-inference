@@ -10,6 +10,14 @@ service SearchService {
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
 }
 
+// Enterprise Tokenizer service definitions
+service TokenizerService {
+  rpc Tokenize(TokenizeRequest) returns (TokenizeResponse);
+  rpc BatchTokenize(BatchTokenizeRequest) returns (BatchTokenizeResponse);
+  rpc GetVocabularyInfo(VocabularyInfoRequest) returns (VocabularyInfoResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
 
 // Inference service definitions
 service InferenceService {
@@ -64,11 +72,59 @@ message SearchResult {
 }
 
 
-// Inference messages
+// Enterprise Tokenizer messages
+message TokenizeRequest {
+  string text = 1;
+  string model_name = 2;        // e.g., "gpt-4", "llama3.2"
+  int32 max_tokens = 3;         // truncation limit
+  bool include_special_tokens = 4;
+  string request_id = 5;        // for tracking/caching
+}
+
+message TokenizeResponse {
+  repeated int32 token_ids = 1;
+  repeated string token_strings = 2;  // human-readable tokens
+  int32 token_count = 3;
+  string truncated_text = 4;    // if truncation occurred
+  bool was_truncated = 5;
+  string model_used = 6;
+  float processing_time_ms = 7; // performance metrics
+  string cache_status = 8;      // "hit", "miss", "bypassed"
+  bool success = 9;
+  string error = 10;
+}
+
+message BatchTokenizeRequest {
+  repeated TokenizeRequest requests = 1;
+  int32 batch_size = 2;
+}
+
+message BatchTokenizeResponse {
+  repeated TokenizeResponse responses = 1;
+  float total_processing_time_ms = 2;
+  int32 cache_hits = 3;
+  int32 cache_misses = 4;
+}
+
+message VocabularyInfoRequest {
+  string model_name = 1;
+}
+
+message VocabularyInfoResponse {
+  int32 vocab_size = 1;
+  repeated string special_tokens = 2;
+  string encoding_name = 3;      // e.g., "cl100k_base"
+  string model_name = 4;
+}
+
+// Enhanced Inference messages (Industry Standard)
 message SummarizeRequest {
-  string original_text = 1;
-  bool streaming = 2;
-  int32 max_length = 3;
+  repeated int32 token_ids = 1;     // PRIMARY: from tokenizer service
+  string model_name = 2;           // which model/tokenizer was used
+  bool streaming = 3;
+  int32 max_length = 4;
+  string request_id = 5;           // for correlation
+  string original_text = 6;        // FALLBACK ONLY: for non-tokenized requests
 }
 
 message SummarizeResponse {

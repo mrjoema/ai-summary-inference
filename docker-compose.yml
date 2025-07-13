@@ -12,7 +12,34 @@ services:
     networks:
       - ai-search-network
 
-  # Ollama service for AI inference
+  # vLLM service for enterprise token-native AI inference
+  vllm:
+    image: vllm/vllm-openai:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - VLLM_MODEL=microsoft/DialoGPT-small  # Lightweight model for development
+      - VLLM_TOKEN_INPUTS=true
+      - VLLM_TENSOR_PARALLEL_SIZE=1
+    command: >
+      --model microsoft/DialoGPT-small
+      --host 0.0.0.0
+      --port 8000
+      --tensor-parallel-size 1
+      --enable-prefix-caching
+      --disable-log-requests
+    networks:
+      - ai-search-network
+    # Uncomment for GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  # Keep Ollama as fallback for development/testing
   ollama:
     image: ollama/ollama:latest
     ports:
@@ -24,14 +51,6 @@ services:
       - OLLAMA_KV_CACHE_TYPE=q8_0
     networks:
       - ai-search-network
-    # Uncomment the following lines if you have GPU support
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
 
   # Safety service
   safety:
@@ -71,6 +90,31 @@ services:
     networks:
       - ai-search-network
 
+  # Enterprise Tokenizer service (CPU optimized for scaling)
+  tokenizer:
+    build:
+      context: .
+      dockerfile: Dockerfile.microservice
+      args:
+        SERVICE_NAME: tokenizer
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVICE_NAME=tokenizer
+      - REDIS_HOST=redis
+      - LOG_LEVEL=info
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+    networks:
+      - ai-search-network
 
   # Inference service (GPU intensive - can be scaled)
   inference:
@@ -84,10 +128,12 @@ services:
     environment:
       - SERVICE_NAME=inference
       - REDIS_HOST=redis
-      - OLLAMA_HOST=ollama
+      - VLLM_HOST=vllm
+      - OLLAMA_HOST=ollama  # Fallback
       - LOG_LEVEL=info
     depends_on:
       - redis
+      - vllm
       - ollama
     deploy:
       resources:
@@ -111,10 +157,12 @@ services:
     command: ["./llm"]
     environment:
       - SERVICE_NAME=llm
+      - TOKENIZER_HOST=tokenizer
       - INFERENCE_HOST=inference
       - LLM_MAX_WORKERS=10
       - LOG_LEVEL=info
     depends_on:
+      - tokenizer
       - inference
     networks:
       - ai-search-network
@@ -129,8 +177,10 @@ services:
       - "8080:8080"
     environment:
       - REDIS_HOST=redis
-      - OLLAMA_HOST=ollama
+      - VLLM_HOST=vllm
+      - OLLAMA_HOST=ollama  # Fallback
       - SEARCH_HOST=search
+      - TOKENIZER_HOST=tokenizer
       - INFERENCE_HOST=inference
       - SAFETY_HOST=safety
       - LLM_HOST=llm
@@ -139,8 +189,10 @@ services:
       - GOOGLE_CX=${GOOGLE_CX:-}
     depends_on:
       - redis
+      - vllm
       - safety
       - search
+      - tokenizer
       - inference
       - llm
     networks:

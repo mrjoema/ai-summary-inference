@@ -115,3 +115,10 @@ scripts/dev-*
 *.crt
 api-keys/
 certs/
+
+gateway
+search
+inference
+llm
+safety
+tokenizer

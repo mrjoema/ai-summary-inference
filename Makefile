@@ -1,7 +1,7 @@
 # Variables
 DOCKER_REGISTRY ?= ai-search
 VERSION ?= latest
-SERVICES = gateway search inference llm safety
+SERVICES = gateway search tokenizer inference llm safety
 
 .PHONY: all build push deploy clean test proto
 
@@ -21,6 +21,7 @@ build:
 	@echo "Building services..."
 	go build -o gateway ./cmd/gateway
 	go build -o search ./cmd/search
+	go build -o tokenizer ./cmd/tokenizer
 	go build -o inference ./cmd/inference
 	go build -o llm ./cmd/llm
 	go build -o safety ./cmd/safety
@@ -37,7 +38,7 @@ push: build
 # Run locally with Docker Compose (app only)
 run-local:
 	@echo "Starting application services locally..."
-	docker-compose up --build gateway search inference llm safety redis ollama
+	docker-compose up --build gateway search tokenizer inference llm safety redis ollama
 
 # Run locally with Docker Compose (app + monitoring)
 run-local-with-monitoring:

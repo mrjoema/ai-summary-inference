@@ -163,6 +163,226 @@ var SearchService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	TokenizerService_Tokenize_FullMethodName          = "/search.TokenizerService/Tokenize"
+	TokenizerService_BatchTokenize_FullMethodName     = "/search.TokenizerService/BatchTokenize"
+	TokenizerService_GetVocabularyInfo_FullMethodName = "/search.TokenizerService/GetVocabularyInfo"
+	TokenizerService_HealthCheck_FullMethodName       = "/search.TokenizerService/HealthCheck"
+)
+
+// TokenizerServiceClient is the client API for TokenizerService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// Enterprise Tokenizer service definitions
+type TokenizerServiceClient interface {
+	Tokenize(ctx context.Context, in *TokenizeRequest, opts ...grpc.CallOption) (*TokenizeResponse, error)
+	BatchTokenize(ctx context.Context, in *BatchTokenizeRequest, opts ...grpc.CallOption) (*BatchTokenizeResponse, error)
+	GetVocabularyInfo(ctx context.Context, in *VocabularyInfoRequest, opts ...grpc.CallOption) (*VocabularyInfoResponse, error)
+	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
+}
+
+type tokenizerServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewTokenizerServiceClient(cc grpc.ClientConnInterface) TokenizerServiceClient {
+	return &tokenizerServiceClient{cc}
+}
+
+func (c *tokenizerServiceClient) Tokenize(ctx context.Context, in *TokenizeRequest, opts ...grpc.CallOption) (*TokenizeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TokenizeResponse)
+	err := c.cc.Invoke(ctx, TokenizerService_Tokenize_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *tokenizerServiceClient) BatchTokenize(ctx context.Context, in *BatchTokenizeRequest, opts ...grpc.CallOption) (*BatchTokenizeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BatchTokenizeResponse)
+	err := c.cc.Invoke(ctx, TokenizerService_BatchTokenize_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *tokenizerServiceClient) GetVocabularyInfo(ctx context.Context, in *VocabularyInfoRequest, opts ...grpc.CallOption) (*VocabularyInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VocabularyInfoResponse)
+	err := c.cc.Invoke(ctx, TokenizerService_GetVocabularyInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *tokenizerServiceClient) HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HealthCheckResponse)
+	err := c.cc.Invoke(ctx, TokenizerService_HealthCheck_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// TokenizerServiceServer is the server API for TokenizerService service.
+// All implementations must embed UnimplementedTokenizerServiceServer
+// for forward compatibility.
+//
+// Enterprise Tokenizer service definitions
+type TokenizerServiceServer interface {
+	Tokenize(context.Context, *TokenizeRequest) (*TokenizeResponse, error)
+	BatchTokenize(context.Context, *BatchTokenizeRequest) (*BatchTokenizeResponse, error)
+	GetVocabularyInfo(context.Context, *VocabularyInfoRequest) (*VocabularyInfoResponse, error)
+	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
+	mustEmbedUnimplementedTokenizerServiceServer()
+}
+
+// UnimplementedTokenizerServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedTokenizerServiceServer struct{}
+
+func (UnimplementedTokenizerServiceServer) Tokenize(context.Context, *TokenizeRequest) (*TokenizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Tokenize not implemented")
+}
+func (UnimplementedTokenizerServiceServer) BatchTokenize(context.Context, *BatchTokenizeRequest) (*BatchTokenizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BatchTokenize not implemented")
+}
+func (UnimplementedTokenizerServiceServer) GetVocabularyInfo(context.Context, *VocabularyInfoRequest) (*VocabularyInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVocabularyInfo not implemented")
+}
+func (UnimplementedTokenizerServiceServer) HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedTokenizerServiceServer) mustEmbedUnimplementedTokenizerServiceServer() {}
+func (UnimplementedTokenizerServiceServer) testEmbeddedByValue()                          {}
+
+// UnsafeTokenizerServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to TokenizerServiceServer will
+// result in compilation errors.
+type UnsafeTokenizerServiceServer interface {
+	mustEmbedUnimplementedTokenizerServiceServer()
+}
+
+func RegisterTokenizerServiceServer(s grpc.ServiceRegistrar, srv TokenizerServiceServer) {
+	// If the following call pancis, it indicates UnimplementedTokenizerServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&TokenizerService_ServiceDesc, srv)
+}
+
+func _TokenizerService_Tokenize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TokenizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TokenizerServiceServer).Tokenize(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TokenizerService_Tokenize_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TokenizerServiceServer).Tokenize(ctx, req.(*TokenizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TokenizerService_BatchTokenize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BatchTokenizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TokenizerServiceServer).BatchTokenize(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TokenizerService_BatchTokenize_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TokenizerServiceServer).BatchTokenize(ctx, req.(*BatchTokenizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TokenizerService_GetVocabularyInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VocabularyInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TokenizerServiceServer).GetVocabularyInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TokenizerService_GetVocabularyInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TokenizerServiceServer).GetVocabularyInfo(ctx, req.(*VocabularyInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TokenizerService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HealthCheckRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TokenizerServiceServer).HealthCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TokenizerService_HealthCheck_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TokenizerServiceServer).HealthCheck(ctx, req.(*HealthCheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// TokenizerService_ServiceDesc is the grpc.ServiceDesc for TokenizerService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var TokenizerService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "search.TokenizerService",
+	HandlerType: (*TokenizerServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Tokenize",
+			Handler:    _TokenizerService_Tokenize_Handler,
+		},
+		{
+			MethodName: "BatchTokenize",
+			Handler:    _TokenizerService_BatchTokenize_Handler,
+		},
+		{
+			MethodName: "GetVocabularyInfo",
+			Handler:    _TokenizerService_GetVocabularyInfo_Handler,
+		},
+		{
+			MethodName: "HealthCheck",
+			Handler:    _TokenizerService_HealthCheck_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/search.proto",
+}
+
+const (
 	InferenceService_Summarize_FullMethodName       = "/search.InferenceService/Summarize"
 	InferenceService_SummarizeStream_FullMethodName = "/search.InferenceService/SummarizeStream"
 	InferenceService_HealthCheck_FullMethodName     = "/search.InferenceService/HealthCheck"

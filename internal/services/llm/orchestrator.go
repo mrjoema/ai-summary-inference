@@ -30,8 +30,9 @@ type LLMResponse struct {
 	Complete bool     `json:"complete"`
 }
 
-// LLMOrchestrator manages direct gRPC streaming to inference services
+// LLMOrchestrator manages enterprise tokenization and inference services
 type LLMOrchestrator struct {
+	tokenizerClient pb.TokenizerServiceClient  // Enterprise tokenizer
 	inferenceClient pb.InferenceServiceClient
 
 	// Request tracking for streaming
@@ -61,12 +62,19 @@ type RequestProcessor struct {
 	CreatedAt time.Time
 }
 
-// NewLLMOrchestrator creates a new LLM orchestrator with direct gRPC streaming
+// NewLLMOrchestrator creates a new enterprise LLM orchestrator with tokenization
 func NewLLMOrchestrator(
+	tokenizerAddr string,
 	inferenceAddr string,
 	maxConcurrentRequests int,
 	service *LLMService,
 ) (*LLMOrchestrator, error) {
+	// Connect to enterprise tokenizer service
+	tokenizerConn, err := grpc.Dial(tokenizerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to tokenizer: %w", err)
+	}
+
 	// Connect to inference service
 	inferenceConn, err := grpc.Dial(inferenceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -76,6 +84,7 @@ func NewLLMOrchestrator(
 	ctx, cancel := context.WithCancel(context.Background())
 
 	orchestrator := &LLMOrchestrator{
+		tokenizerClient:       pb.NewTokenizerServiceClient(tokenizerConn),
 		inferenceClient:       pb.NewInferenceServiceClient(inferenceConn),
 		activeRequests:        make(map[string]*RequestProcessor),
 		maxConcurrentRequests: maxConcurrentRequests,
@@ -233,8 +242,20 @@ func (o *LLMOrchestrator) processLLMRequest(processor *RequestProcessor, req *LL
 		processor.Cancel()
 	}()
 
-	// Generate summary via batch inference (no tokenization needed)
-	o.processBatchInference(processor, req)
+	// Step 1: Enterprise tokenization
+	tokenizeResp, err := o.performEnterpriseTokenization(processor.Ctx, req.Text, "llama3.2", req.MaxTokens)
+	if err != nil {
+		log.Printf("Tokenization failed for request %s: %v, falling back to text-only", req.ID, err)
+		// Fallback to text-only processing
+		o.processBatchInference(processor, req, nil, "llama3.2")
+		return
+	}
+
+	log.Printf("Enterprise tokenization complete for %s: %d tokens (%.2fms, %s)", 
+		req.ID, tokenizeResp.TokenCount, tokenizeResp.ProcessingTimeMs, tokenizeResp.CacheStatus)
+
+	// Step 2: Generate summary via batch inference with tokens
+	o.processBatchInference(processor, req, tokenizeResp.TokenIds, tokenizeResp.ModelUsed)
 }
 
 // processStreamingLLMRequest handles STREAMING LLM processing via direct gRPC
@@ -247,17 +268,54 @@ func (o *LLMOrchestrator) processStreamingLLMRequest(processor *RequestProcessor
 		processor.Cancel()
 	}()
 
-	// Generate summary via streaming inference (no tokenization needed)
-	o.processStreamingInference(processor, req, streamCallback)
+	// Step 1: Enterprise tokenization for streaming
+	tokenizeResp, err := o.performEnterpriseTokenization(processor.Ctx, req.Text, "llama3.2", req.MaxTokens)
+	if err != nil {
+		log.Printf("Tokenization failed for streaming request %s: %v, falling back to text-only", req.ID, err)
+		// Fallback to text-only streaming
+		o.processStreamingInference(processor, req, streamCallback, nil, "llama3.2")
+		return
+	}
+
+	log.Printf("Enterprise tokenization complete for streaming %s: %d tokens (%.2fms, %s)", 
+		req.ID, tokenizeResp.TokenCount, tokenizeResp.ProcessingTimeMs, tokenizeResp.CacheStatus)
+
+	// Step 2: Generate summary via streaming inference with tokens
+	o.processStreamingInference(processor, req, streamCallback, tokenizeResp.TokenIds, tokenizeResp.ModelUsed)
+}
+
+// performEnterpriseTokenization calls the tokenizer service
+func (o *LLMOrchestrator) performEnterpriseTokenization(ctx context.Context, text, modelName string, maxTokens int32) (*pb.TokenizeResponse, error) {
+	return o.tokenizerClient.Tokenize(ctx, &pb.TokenizeRequest{
+		Text:                  text,
+		ModelName:            modelName,
+		MaxTokens:            maxTokens,
+		IncludeSpecialTokens: true,
+		RequestId:            fmt.Sprintf("llm_%d", time.Now().UnixNano()),
+	})
 }
 
 // processStreamingInference handles streaming inference via direct gRPC
-func (o *LLMOrchestrator) processStreamingInference(processor *RequestProcessor, req *LLMRequest, streamCallback func(string, string, bool, int32)) {
-	stream, err := o.inferenceClient.SummarizeStream(processor.Ctx, &pb.SummarizeRequest{
-		OriginalText: req.Text,
-		MaxLength:    req.MaxTokens,
-		Streaming:    true,
-	})
+func (o *LLMOrchestrator) processStreamingInference(processor *RequestProcessor, req *LLMRequest, streamCallback func(string, string, bool, int32), tokenIds []int32, modelName string) {
+	// Industry standard: Create inference request with tokens as primary input
+	inferenceReq := &pb.SummarizeRequest{
+		MaxLength: req.MaxTokens,
+		Streaming: true,
+		RequestId: req.ID,
+	}
+	
+	// PRIMARY PATH: Use enterprise tokenization (industry standard)
+	if len(tokenIds) > 0 {
+		inferenceReq.TokenIds = tokenIds
+		inferenceReq.ModelName = modelName
+		// NO original_text - tokens are the source of truth
+	} else {
+		// FALLBACK PATH: Text-only for legacy/debugging
+		inferenceReq.OriginalText = req.Text
+		inferenceReq.ModelName = "llama3.2" // default
+	}
+
+	stream, err := o.inferenceClient.SummarizeStream(processor.Ctx, inferenceReq)
 	if err != nil {
 		processor.Status = "failed"
 		processor.Error = fmt.Errorf("streaming inference failed: %w", err)
@@ -291,12 +349,26 @@ func (o *LLMOrchestrator) processStreamingInference(processor *RequestProcessor,
 }
 
 // processBatchInference handles batch inference via direct gRPC
-func (o *LLMOrchestrator) processBatchInference(processor *RequestProcessor, req *LLMRequest) {
-	resp, err := o.inferenceClient.Summarize(processor.Ctx, &pb.SummarizeRequest{
-		OriginalText: req.Text,
-		MaxLength:    req.MaxTokens,
-		Streaming:    false,
-	})
+func (o *LLMOrchestrator) processBatchInference(processor *RequestProcessor, req *LLMRequest, tokenIds []int32, modelName string) {
+	// Industry standard: Create inference request with tokens as primary input
+	inferenceReq := &pb.SummarizeRequest{
+		MaxLength: req.MaxTokens,
+		Streaming: false,
+		RequestId: req.ID,
+	}
+	
+	// PRIMARY PATH: Use enterprise tokenization (industry standard)
+	if len(tokenIds) > 0 {
+		inferenceReq.TokenIds = tokenIds
+		inferenceReq.ModelName = modelName
+		// NO original_text - tokens are the source of truth
+	} else {
+		// FALLBACK PATH: Text-only for legacy/debugging
+		inferenceReq.OriginalText = req.Text
+		inferenceReq.ModelName = "llama3.2" // default
+	}
+
+	resp, err := o.inferenceClient.Summarize(processor.Ctx, inferenceReq)
 	if err != nil {
 		processor.Status = "failed"
 		processor.Error = fmt.Errorf("batch inference failed: %w", err)

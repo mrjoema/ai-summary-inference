@@ -22,6 +22,7 @@ type InferenceService struct {
 	config     *config.Config
 	httpClient *http.Client
 	metrics    *monitoring.MetricsCollector
+	vllmEngine *VLLMEngine  // Enterprise token-native engine
 }
 
 type OllamaRequest struct {
@@ -46,12 +47,16 @@ func NewInferenceService(cfg *config.Config) (*InferenceService, error) {
 		logger.GetLogger().Warnf("Failed to initialize metrics collector: %v", err)
 	}
 
+	// Initialize enterprise vLLM engine
+	vllmEngine := NewVLLMEngine(cfg)
+
 	return &InferenceService{
 		config: cfg,
 		httpClient: &http.Client{
-			Timeout: cfg.Ollama.Timeout,
+			Timeout: cfg.Ollama.Timeout, // Fallback timeout
 		},
-		metrics: metricsCollector,
+		metrics:    metricsCollector,
+		vllmEngine: vllmEngine,
 	}, nil
 }
 
@@ -59,27 +64,49 @@ func (i *InferenceService) Summarize(ctx context.Context, req *pb.SummarizeReque
 	start := time.Now()
 	log := logger.GetLogger()
 
-	log.Infof("Generating summary for text length: %d characters", len(req.OriginalText))
+	var prompt string
+	var modelName string
+	var summary string
 
-	// Create summarization prompt
-	prompt := i.createSummarizationPrompt(req.OriginalText, int(req.MaxLength))
-
-	// Record text processed
-	monitoring.RecordTokensProcessed("inference", i.config.Ollama.Model, len(req.OriginalText))
-
-	// Call Ollama API
-	summary, err := i.callOllama(ctx, prompt, false)
-	if err != nil {
-		log.Errorf("Failed to generate summary: %v", err)
-		monitoring.RecordOllamaRequest("inference", i.config.Ollama.Model, "error")
-		// Fallback to mock summary
-		summary = i.generateMockSummary(req.OriginalText, int(req.MaxLength))
+	// INDUSTRY STANDARD: Token-native processing vs fallback
+	if len(req.TokenIds) > 0 {
+		log.Infof("🚀 ENTERPRISE: Processing %d tokens directly via vLLM (model: %s)", 
+			len(req.TokenIds), req.ModelName)
+		
+		// INDUSTRY STANDARD: Send tokens directly to vLLM (NO text conversion!)
+		result, err := i.vllmEngine.GenerateFromTokens(ctx, req.TokenIds, req.ModelName, int(req.MaxLength))
+		modelName = req.ModelName
+		
+		if err != nil {
+			log.Errorf("vLLM token generation failed: %v", err)
+			monitoring.RecordRequest("inference", "vllm_generate", "error")
+			// Fallback to mock
+			summary = i.generateMockSummary("Enterprise tokenized content", int(req.MaxLength))
+		} else {
+			summary = result
+		}
 	} else {
-		monitoring.RecordOllamaRequest("inference", i.config.Ollama.Model, "success")
+		log.Infof("FALLBACK: Processing text request via Ollama: %d characters", len(req.OriginalText))
+		
+		// Fallback to Ollama text-based approach
+		prompt = i.createSummarizationPrompt(req.OriginalText, int(req.MaxLength))
+		modelName = i.config.Ollama.Model
+		
+		// Call Ollama API (legacy)
+		result, err := i.callOllama(ctx, prompt, false)
+		if err != nil {
+			log.Errorf("Ollama generation failed: %v", err)
+			monitoring.RecordOllamaRequest("inference", modelName, "error")
+			// Fallback to mock summary
+			summary = i.generateMockSummary(req.OriginalText, int(req.MaxLength))
+		} else {
+			monitoring.RecordOllamaRequest("inference", modelName, "success")
+			summary = result
+		}
 	}
 
 	// Record inference latency
-	monitoring.RecordInferenceLatency("inference", i.config.Ollama.Model, false, time.Since(start))
+	monitoring.RecordInferenceLatency("inference", modelName, false, time.Since(start))
 
 	log.Infof("Summary generation complete. Length: %d", len(summary))
 
@@ -95,30 +122,52 @@ func (i *InferenceService) SummarizeStream(req *pb.SummarizeRequest, stream pb.I
 	start := time.Now()
 	log := logger.GetLogger()
 
-	log.Infof("Starting streaming summary for text length: %d characters", len(req.OriginalText))
+	var prompt string
+	var modelName string
 
-	// Create summarization prompt
-	prompt := i.createSummarizationPrompt(req.OriginalText, int(req.MaxLength))
-
-	// Record text processed
-	monitoring.RecordTokensProcessed("inference", i.config.Ollama.Model, len(req.OriginalText))
-
-	// Call Ollama API with streaming
-	err := i.callOllamaStream(stream.Context(), prompt, stream)
-	if err != nil {
-		log.Errorf("Failed to generate streaming summary: %v", err)
-		monitoring.RecordOllamaRequest("inference", i.config.Ollama.Model, "error")
-		// Fallback to mock streaming
-		err = i.mockStreamingSummary(req, stream)
+	// INDUSTRY STANDARD: Token-native streaming vs fallback
+	if len(req.TokenIds) > 0 {
+		log.Infof("🚀 ENTERPRISE STREAMING: %d tokens directly via vLLM (model: %s)", 
+			len(req.TokenIds), req.ModelName)
+		
+		modelName = req.ModelName
+		
+		// INDUSTRY STANDARD: Stream tokens directly from vLLM
+		err := i.streamVLLMTokens(stream.Context(), req.TokenIds, req.ModelName, int(req.MaxLength), stream)
+		if err != nil {
+			log.Errorf("vLLM token streaming failed: %v", err)
+			monitoring.RecordRequest("inference", "vllm_stream", "error")
+			// Fallback to mock streaming
+			err = i.mockStreamingSummary(req, stream)
+		}
+		
+		// Record metrics
+		monitoring.RecordInferenceLatency("inference", modelName, true, time.Since(start))
+		log.Infof("vLLM token streaming complete")
+		return err
 	} else {
-		monitoring.RecordOllamaRequest("inference", i.config.Ollama.Model, "success")
+		log.Infof("FALLBACK STREAMING: %d characters via Ollama", len(req.OriginalText))
+		
+		prompt = i.createSummarizationPrompt(req.OriginalText, int(req.MaxLength))
+		modelName = i.config.Ollama.Model
+		
+		// Call Ollama API with streaming (legacy)
+		err := i.callOllamaStream(stream.Context(), prompt, stream)
+		if err != nil {
+			log.Errorf("Failed to generate streaming summary: %v", err)
+			monitoring.RecordOllamaRequest("inference", modelName, "error")
+			// Fallback to mock streaming
+			err = i.mockStreamingSummary(req, stream)
+		} else {
+			monitoring.RecordOllamaRequest("inference", modelName, "success")
+		}
+		
+		// Record inference latency
+		monitoring.RecordInferenceLatency("inference", modelName, true, time.Since(start))
+		
+		log.Infof("Ollama streaming complete")
+		return err
 	}
-
-	// Record inference latency
-	monitoring.RecordInferenceLatency("inference", i.config.Ollama.Model, true, time.Since(start))
-
-	log.Infof("Streaming summary complete")
-	return err
 }
 
 func (i *InferenceService) HealthCheck(ctx context.Context, req *pb.HealthCheckRequest) (*pb.HealthCheckResponse, error) {
@@ -153,6 +202,83 @@ Text to summarize:
 %s
 
 Summary:`, maxLength, originalText)
+}
+
+func (i *InferenceService) createTokenAwarePrompt(tokenIds []int32, modelName string, maxLength int) string {
+	// Industry standard: Reconstruct text from tokens for model consumption
+	reconstructedText := i.detokenize(tokenIds, modelName)
+	
+	return fmt.Sprintf(`Please provide a concise summary of the following text. Keep the summary under %d characters.
+
+Text to summarize:
+%s
+
+Summary:`, maxLength, reconstructedText)
+}
+
+func (i *InferenceService) detokenize(tokenIds []int32, modelName string) string {
+	// Industry standard: Convert tokens back to text for natural language models
+	// In production, this would use the actual tokenizer's decode method
+	
+	// For now, simulate detokenization based on model type
+	switch modelName {
+	case "llama3.2":
+		return i.detokenizeLlama(tokenIds)
+	case "gpt-4":
+		return i.detokenizeGPT(tokenIds)
+	default:
+		return i.detokenizeLlama(tokenIds) // fallback
+	}
+}
+
+func (i *InferenceService) detokenizeLlama(tokenIds []int32) string {
+	// Simplified detokenization - in production use actual llama tokenizer
+	words := make([]string, 0, len(tokenIds))
+	for _, tokenId := range tokenIds {
+		// Map token ID back to word (simplified)
+		if tokenId == 1 {
+			continue // Skip start token
+		}
+		if tokenId == 2 {
+			break // End token
+		}
+		words = append(words, fmt.Sprintf("token_%d", tokenId))
+	}
+	return strings.Join(words, " ")
+}
+
+func (i *InferenceService) detokenizeGPT(tokenIds []int32) string {
+	// GPT-style detokenization
+	return i.detokenizeLlama(tokenIds) // Simplified for demo
+}
+
+// streamVLLMTokens handles token-native streaming with vLLM
+func (i *InferenceService) streamVLLMTokens(ctx context.Context, tokenIds []int32, modelName string, maxLength int, stream pb.InferenceService_SummarizeStreamServer) error {
+	position := int32(0)
+	
+	// Stream tokens directly from vLLM
+	return i.vllmEngine.StreamFromTokens(ctx, tokenIds, modelName, maxLength, func(content string, isFinished bool) {
+		if content != "" {
+			// Send each token chunk to client
+			resp := &pb.SummarizeStreamResponse{
+				Token:    content,
+				IsFinal:  isFinished,
+				Position: position,
+			}
+			stream.Send(resp)
+			position++
+		}
+		
+		if isFinished {
+			// Send final completion signal
+			resp := &pb.SummarizeStreamResponse{
+				Token:    "",
+				IsFinal:  true,
+				Position: position,
+			}
+			stream.Send(resp)
+		}
+	})
 }
 
 func (i *InferenceService) callOllama(ctx context.Context, prompt string, stream bool) (string, error) {
