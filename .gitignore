@@ -1,0 +1,117 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# Built binaries (from Makefile)
+gateway
+search
+inference
+llm
+safety
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Docker volumes and data
+docker-data/
+volumes/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+
+# Configuration files with secrets (keep templates)
+config.local.yaml
+config.prod.yaml
+secrets.yaml
+
+# Build artifacts
+dist/
+build/
+
+# Coverage reports
+coverage.txt
+coverage.html
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Redis dump
+dump.rdb
+
+# Node modules (if any frontend tools)
+node_modules/
+
+# Python cache (if any Python tools)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints
+
+# Generated protobuf files (uncomment if you want to regenerate them)
+# proto/*.pb.go
+
+# Kubernetes secrets
+k8s/secrets/
+
+# Monitoring data
+prometheus_data/
+grafana_data/
+
+# Docker compose override files
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Local development scripts
+scripts/local-*
+scripts/dev-*
+
+# API keys and certificates
+*.pem
+*.key
+*.crt
+api-keys/
+certs/
