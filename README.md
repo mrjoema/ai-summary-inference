@@ -1,138 +1,138 @@
-# AI Search Engine with Microservices Architecture
+# AI-Powered Search Engine with Real-Time Summarization
 
-A high-performance, scalable AI-powered search engine built with Go microservices, designed for production deployment with comprehensive fault tolerance, enterprise-grade AI inference, and modern streaming architecture.
-
-## 🏗️ Architecture Overview
-
-### Microservices Architecture
-- **Gateway Service** (Port 8080): HTTP API gateway with Server-Sent Events (SSE) streaming
-- **Search Service** (Port 8081): Google Custom Search API integration with fallback mock data
-- **Tokenizer Service** (Port 8082): Enterprise-grade CPU-intensive text tokenization
-- **Inference Service** (Port 8083): GPU-intensive AI model inference with vLLM integration
-- **Safety Service** (Port 8084): Input validation and output sanitization
-- **LLM Orchestrator Service** (Port 8085): Coordinates tokenization and inference workflows
-- **vLLM Engine** (Port 8000): Enterprise token-native AI inference engine
-- **Redis** (Port 6379): Caching and session management
-
-### Key Features
-- ✅ **Enterprise AI Inference**: vLLM integration with token-native processing
-- ✅ **LLM Orchestration**: Dedicated service for coordinating AI workflows
-- ✅ **Safety-first**: Comprehensive input validation and output sanitization
-- ✅ **Streaming Support**: Real-time AI summary generation with Server-Sent Events (SSE)
-- ✅ **Non-blocking**: Search results appear immediately while AI summary generates
-- ✅ **Fault Tolerant**: Circuit breakers, graceful degradation, and retry mechanisms
-- ✅ **Direct gRPC Streaming**: High-performance service-to-service communication
-- ✅ **Microservices**: Separate CPU and GPU intensive services for optimal resource allocation
-- ✅ **Kubernetes Ready**: Full K8s deployment with auto-scaling (HPA)
-- ✅ **Local Development**: Simple one-command setup for development and testing
-- ✅ **Production Ready**: Docker containers, health checks, comprehensive monitoring
+A production-ready AI search engine built with Go microservices architecture, featuring real-time BART model inference for intelligent search result summarization with both streaming and non-streaming modes.
 
 ## 🎬 Demo
 
 ![AI Inference Demo](ai-inference-demo.gif)
 
-*Real-time AI-powered search with streaming responses and enterprise-grade inference*
+## 🚀 Key Features
+
+- ✅ **Real AI Summarization**: Facebook BART model with HuggingFace Transformers
+- ✅ **Token-Native Processing**: Industry-standard tokenization → inference → detokenization pipeline
+- ✅ **Dual Response Modes**: Streaming (real-time tokens) and non-streaming (complete summaries)
+- ✅ **Server-Sent Events**: Real-time search results followed by AI summaries
+- ✅ **Production Architecture**: Go orchestrator with Python ML services
+- ✅ **Safety-First**: Input validation and output sanitization
+- ✅ **Monitoring Stack**: Prometheus, Grafana, and comprehensive health checks
+- ✅ **Apple Silicon Optimized**: CPU-optimized PyTorch deployment for Mac development
+
+## 🏗️ Architecture Overview
+
+### Current Microservices Stack
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Gateway   │───▶│ LLM Orch.   │───▶│  Tokenizer  │
+│  (Go:8080)  │    │ (Go:8086)   │    │(Python:8090)│
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Search    │    │  Inference  │    │    Redis    │
+│ (Go:8081)   │    │(Python:8083)│    │  (Cache)    │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Safety    │    │    BART     │    │  Prometheus │
+│ (Go:8084)   │    │    Model    │    │ (Monitoring)│
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+### Services Description
+- **Gateway Service** (Go, Port 8080): HTTP API with SSE streaming support
+- **LLM Orchestrator** (Go, Port 8086): Coordinates token-native AI workflow
+- **Search Service** (Go, Port 8081): Google Custom Search API integration
+- **Tokenizer Service** (Python, Port 8090): BART tokenization and detokenization
+- **Inference Service** (Python, Port 8083): BART model inference with PyTorch
+- **Safety Service** (Go, Port 8084): Input validation and output sanitization
+
+## 🎯 User Experience Flow
+
+### Non-Streaming Mode (Recommended)
+1. **Submit search query** → Immediate response with search results
+2. **AI summary appears first** → Prominently displayed with gradient styling
+3. **Source results below** → Clean, secondary display for reference
+
+### Streaming Mode
+1. **Submit search query** → Real-time search results appear
+2. **AI tokens stream live** → Watch summary generate word-by-word
+3. **Complete summary** → Final sanitized output
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Go 1.21+
+- Python 3.9+ with pip
 - Docker & Docker Compose
-- Protocol Buffers compiler (`protoc`)
-- kubectl (for Kubernetes deployment)
+- 8GB+ RAM (for BART model)
 
-### Local Development Setup
-
-1. **Clone and setup**:
+### 1. Clone and Setup
 ```bash
 git clone <repository-url>
-cd ai-search-service
-make dev-setup
+cd ai-summary-inference
 ```
 
-2. **Start services locally**:
+### 2. Start All Services
 ```bash
-make run-local
-```
-
-3. **Access the application**:
-Open http://localhost:8080 in your browser
-
-### Google Search API Setup (Optional)
-```bash
-export GOOGLE_API_KEY="your-api-key"
-export GOOGLE_CX="your-custom-search-engine-id"
-```
-
-Without these credentials, the system will use mock search data for testing.
-
-## 🔧 Development
-
-### Building Services
-```bash
-# Build all services
+# Build Go services
 make build
 
-# Build specific service
-make build-service SERVICE=gateway
+# Start everything with Docker Compose
+docker-compose up -d
 
-# Generate protocol buffers
-make proto
+# Wait for services to initialize (BART model loading takes ~30s)
+sleep 30
 ```
 
-### Running Individual Services
+### 3. Access the Application
+- **Web Interface**: http://localhost:8080
+- **API Endpoint**: http://localhost:8080/api/v1/search
+- **Monitoring**: http://localhost:3000 (Grafana: admin/admin)
+
+### Optional: Google Search API
 ```bash
-# Run gateway service
-make run-service SERVICE=gateway
+# Set environment variables for real search (optional)
+export GOOGLE_API_KEY="your-api-key"
+export GOOGLE_CX="your-custom-search-engine-id"
 
-# Run in separate terminals:
-make run-service SERVICE=search
-make run-service SERVICE=tokenizer
-make run-service SERVICE=inference
-make run-service SERVICE=safety
-make run-service SERVICE=llm
+# Restart gateway to pick up credentials
+docker-compose restart gateway
 ```
 
-### Testing
-```bash
-# Run tests
-make test
-
-# Test streaming vs non-streaming
-go run scripts/test_streaming.go
-```
-
-## ☸️ Kubernetes Deployment
-
-### Deploy to Kubernetes
-```bash
-# Deploy all services
-make deploy-k8s
-
-# Create Google API secret (optional)
-kubectl create secret generic google-api-secret \
-  --from-literal=api-key=YOUR_API_KEY \
-  --from-literal=cx=YOUR_CX \
-  -n ai-search
-
-# Check status
-make status
-
-# Port forward for local access
-make port-forward
-```
-
-### Scaling Configuration
-- **Tokenizer**: 2-10 replicas (CPU intensive)
-- **Inference**: 1-5 replicas (GPU intensive)
-- **LLM Orchestrator**: 2-5 replicas (Coordination service)
-- **Gateway**: 2-8 replicas (Load balancing)
-- **Search**: 2-6 replicas (API rate limiting)
-- **Safety**: 2 replicas (Fast response)
+Without Google API credentials, the system uses mock search data.
 
 ## 🌐 API Documentation
 
-### Search Endpoint
+### Non-Streaming Search (SSE)
+```bash
+POST /api/v1/search
+Content-Type: application/json
+Accept: text/event-stream
+
+{
+  "query": "machine learning algorithms",
+  "safe_search": true,
+  "num_results": 5
+}
+```
+
+**Response**: Server-Sent Events stream
+```
+event:status
+data:{"type":"started","query":"machine learning algorithms"}
+
+event:search_results
+data:{"type":"search_results","results":[...]}
+
+event:summary
+data:{"type":"summary_complete","text":"AI summary here..."}
+
+event:complete
+data:{"type":"complete"}
+```
+
+### Non-Streaming Search (JSON)
 ```bash
 POST /api/v1/search
 Content-Type: application/json
@@ -140,536 +140,298 @@ Content-Type: application/json
 {
   "query": "artificial intelligence",
   "safe_search": true,
-  "streaming": true,
-  "num_results": 5
+  "num_results": 3
 }
 ```
 
-### Response
+**Response**: Complete JSON with search results and AI summary
 ```json
 {
-  "task_id": "task_1234567890",
   "query": "artificial intelligence",
-  "status": "pending",
-  "streaming": true
+  "status": "completed",
+  "search_results": [...],
+  "summary": "AI-generated summary text..."
 }
 ```
 
-### Status Endpoint
+### Streaming Search (Real-time Tokens)
 ```bash
-GET /api/v1/search/status/{task_id}
+GET /api/v1/search?query=python&streaming=true&safe_search=true&num_results=5
+Accept: text/event-stream
 ```
 
-### Streaming Endpoint
-```bash
-SSE: /api/v1/search/stream/{task_id}
+**Response**: Real-time token streaming
+```
+event:search_results
+data:{"type":"search_results","results":[...]}
+
+event:token
+data:{"type":"token","token":"Python","position":0}
+
+event:token  
+data:{"type":"token","token":" is","position":1}
+
+event:complete
+data:{"type":"complete"}
 ```
 
-## 🔒 Safety Features
+## 🔧 Development
+
+### Building Services
+```bash
+# Build all Go services
+make build
+
+# Generate protocol buffers (if changed)
+make proto
+
+# Run tests
+make test
+```
+
+### Running Individual Services
+```bash
+# Start core services
+docker-compose up -d redis prometheus grafana
+
+# Run Go services locally
+./gateway &
+./llm &
+./search &
+./safety &
+
+# Python services need Docker for dependencies
+docker-compose up -d python-tokenizer inference
+```
+
+### Monitoring and Debugging
+```bash
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs gateway
+docker-compose logs inference
+
+# Health checks
+curl http://localhost:8080/health
+curl http://localhost:8086/health
+```
+
+## 🔍 AI Processing Pipeline
+
+### Token-Native Flow
+1. **Text Input**: "What is machine learning?"
+2. **Tokenization**: Text → Token IDs `[2061, 16, 3563, 2069, 116]`
+3. **Inference**: BART model processes token IDs → Generated token IDs
+4. **Detokenization**: Token IDs → Human-readable text summary
+5. **Safety Check**: Output sanitization and validation
+6. **Client Display**: Final summary with source results
+
+### Model Details
+- **Model**: `facebook/bart-large-cnn` (406M parameters)
+- **Framework**: HuggingFace Transformers + PyTorch
+- **Device**: CPU-optimized for Apple Silicon and x86
+- **Generation**: Beam search with 4 beams, 20-150 tokens
+- **Optimization**: Stable library versions to prevent device placement issues
+
+### Performance Characteristics
+- **Cold Start**: ~30 seconds (model loading)
+- **Inference Time**: 2-8 seconds per summary (CPU)
+- **Concurrent Requests**: 8 max per inference service
+- **Memory Usage**: ~2GB per inference service
+- **Token Processing**: ~50 tokens/second (streaming)
+
+## 🛡️ Safety & Validation
 
 ### Input Validation
-- Length limits (500 chars for queries)
-- SQL injection prevention
-- Command injection prevention
-- XSS protection
-- Inappropriate content detection
+- **Length Limits**: 500 characters for search queries
+- **Content Filtering**: Inappropriate content detection
+- **Injection Prevention**: SQL/Command injection protection
+- **Rate Limiting**: Concurrent request management (8 per service)
 
 ### Output Sanitization
-- HTML escaping
-- Length limits (1000 chars for summaries)
-- Dangerous pattern removal
-- Unicode normalization
+- **Content Filtering**: Dangerous pattern removal
+- **Length Limits**: Summary truncation if needed
+- **HTML Escaping**: XSS prevention
+- **Final Validation**: Safety service approval required
 
 ## 📊 Monitoring & Observability
 
-### Comprehensive Monitoring Stack
-- **Prometheus**: Metrics collection and alerting
-- **Grafana**: Visualization dashboards
-- **Custom Metrics**: CPU, GPU, memory, and AI-specific metrics
-- **Real-time Alerts**: Performance and health monitoring
+### Monitoring Stack
+- **Prometheus**: Metrics collection (http://localhost:9090)
+- **Grafana**: Visualization dashboards (http://localhost:3000)
+- **cAdvisor**: Container resource monitoring (http://localhost:8087)
+- **Health Endpoints**: All services expose /health endpoints
 
 ### Key Metrics Tracked
-- **CPU Usage**: Per-service CPU utilization
-- **Memory Usage**: System and process memory consumption
-- **GPU Metrics**: GPU utilization and memory (inference service)
-- **Request Metrics**: Request rates, latencies, and error rates
-- **AI Metrics**: Token processing, vLLM inference latency, enterprise performance
-- **Service Health**: Uptime and availability monitoring
-
-### Monitoring Endpoints
-```bash
-# Prometheus metrics
-curl http://localhost:8080/metrics    # Gateway metrics
-curl http://localhost:8083/metrics    # Inference metrics (includes GPU)
-curl http://localhost:8081/metrics    # Search metrics
-curl http://localhost:8082/metrics    # Tokenizer metrics (CPU intensive)
-curl http://localhost:8084/metrics    # Safety metrics
-curl http://localhost:8085/metrics    # LLM Orchestrator metrics
-curl http://localhost:8000/metrics   # vLLM Engine metrics
-
-# Monitoring dashboards
-http://localhost:3000                 # Grafana (admin/admin)
-http://localhost:9090                 # Prometheus
-http://localhost:8085                 # cAdvisor (container metrics)
 ```
+# Request metrics
+ai_search_requests_total{service="gateway",status="success"}
+ai_search_request_duration_seconds{service="gateway",method="search"}
 
-## 🚀 Quick Start with Monitoring
+# AI-specific metrics  
+ai_search_llm_requests_total{service="orchestrator",model="bart"}
+ai_search_tokenization_duration_seconds{service="tokenizer"}
+ai_search_inference_duration_seconds{service="inference"}
 
-### Easy Startup Script
-We've created a simple startup script that makes it easy to run the application with monitoring:
-
-```bash
-# Start everything (app + monitoring) - RECOMMENDED
-./start.sh
-
-# Start application only (no monitoring)
-./start.sh app-only
-
-# Start monitoring stack only
-./start.sh monitoring
-
-# Stop all services
-./start.sh stop
-
-# Show service status
-./start.sh status
-
-# Show logs for a specific service
-./start.sh logs gateway
-
-# Clean up everything
-./start.sh clean
-
-# Show help
-./start.sh help
+# System metrics
+ai_search_cpu_usage_percent{service="inference"}
+ai_search_memory_usage_bytes{service="inference"}
 ```
-
-### Using Makefile Commands
-Alternatively, you can use the Makefile commands:
-
-```bash
-# Start everything with monitoring
-make run-local-with-monitoring
-
-# Start application only
-make run-local
-
-# Start monitoring only
-make run-monitoring
-
-# Stop services
-make stop-local
-
-# Clean up
-make stop-clean
-```
-
-### Starting with Monitoring
-# Start all services including monitoring stack
-docker-compose up -d
-
-# Wait for services to start
-sleep 30
-
-# Run monitoring test to generate metrics
-go run scripts/monitoring_test.go
-
-# Access dashboards
-open http://localhost:3000  # Grafana
-open http://localhost:9090  # Prometheus
-```
-
-### Dashboard Features
-- **Real-time CPU/GPU monitoring** across all services
-- **AI inference performance** tracking
-- **Request flow visualization** with latency percentiles
-- **Error rate monitoring** and alerting
-- **Resource utilization** trends and capacity planning
-- **Service health** status and uptime tracking
 
 ### Alerts Configuration
-Automatic alerts for:
-- High CPU usage (>80% warning, >95% critical)
-- High memory usage (>85% warning, >95% critical)
-- GPU overutilization (>90% warning)
-- Service downtime (>1 minute)
-- High error rates (>10% warning)
-- Slow AI inference (>30 seconds)
-
-### Monitoring Architecture
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Services  │───▶│ Prometheus  │───▶│   Grafana   │
-│  (Metrics)  │    │ (Collection)│    │(Dashboards) │
-└─────────────┘    └─────────────┘    └─────────────┘
-       │                   │                   │
-       ▼                   ▼                   ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ Node Export │    │ Alert Rules │    │  Alerting   │
-│(System CPU) │    │(Thresholds) │    │(Notifications)│
-└─────────────┘    └─────────────┘    └─────────────┘
-```
-
-### Custom Metrics
-```go
-// CPU and Memory metrics
-ai_search_cpu_usage_percent{service="inference", instance="inference-123"}
-ai_search_memory_usage_percent{service="tokenizer", instance="tokenizer-456"}
-
-// GPU metrics (inference service)
-ai_search_gpu_usage_percent{service="inference", instance="inference-123", gpu_id="0"}
-ai_search_gpu_memory_usage_bytes{service="inference", instance="inference-123", gpu_id="0"}
-
-// Request metrics
-ai_search_requests_total{service="gateway", method="search", status="success"}
-ai_search_request_duration_seconds{service="gateway", method="search"}
-
-// AI-specific metrics
-ai_search_tokens_processed_total{service="inference", model="llama3.2:3b"}
-ai_search_inference_latency_seconds{service="inference", model="llama3.2:3b", streaming="true"}
-ai_search_vllm_requests_total{service="inference", model="microsoft/DialoGPT-small", status="success"}
-```
-
-### Performance Monitoring
-Monitor these key performance indicators:
-- **Tokenizer CPU**: Should scale with request volume
-- **Inference GPU**: High utilization during AI processing
-- **Gateway Latency**: Overall request processing time
-- **vLLM Response Time**: Enterprise AI model inference speed
-- **Error Rates**: Service reliability metrics
-
-### Scaling Decisions
-Use monitoring data to make scaling decisions:
-- **High CPU on tokenizer**: Scale tokenizer replicas
-- **High GPU on inference**: Scale inference replicas or add GPU resources
-- **High gateway latency**: Scale gateway replicas
-- **High error rates**: Investigate service health and dependencies
-
-## 🔄 Streaming vs Non-Streaming Mode
-
-### Non-Streaming Mode
-1. Submit search query
-2. Get task ID immediately
-3. Poll status endpoint
-4. Receive complete results when ready
-
-### Streaming Mode
-1. Submit search query with `streaming: true`
-2. Connect to HTTP stream using EventSource
-3. Receive search results immediately
-4. Receive AI summary tokens in real-time
-5. Get final complete summary
-
-## 🛠️ Architecture Decisions & Scaling Strategy
-
-### Why Microservices?
-- **Resource Optimization**: Separate CPU (tokenizer) and GPU (inference) services
-- **Scalability**: Independent scaling based on load
-- **Fault Isolation**: Service failures don't affect others
-- **Technology Diversity**: Can use different tech stacks per service
-- **LLM Orchestration**: Dedicated service for managing AI workflows
-
-### Communication Patterns
-- **Internal Services**: gRPC for high-performance service-to-service communication
-- **Client Streaming**: Server-Sent Events (SSE) for real-time updates to web clients
-- **Direct gRPC Streaming**: Eliminated Redis queues for better performance and lower latency
-- **Token-Native Processing**: Enterprise-grade tokenization with vLLM integration
-
-### Enterprise AI Infrastructure
-- **vLLM Engine**: Primary inference engine with token-native processing
-- **vLLM Integration**: Enterprise token-native AI inference engine
-- **LLM Orchestrator**: Coordinates tokenization → inference workflows
-- **Enterprise Tokenization**: Advanced tokenization with caching and batch processing
-
-### Fault Tolerance & Resilience
-- **Circuit Breakers**: Prevent cascading failures across services
-- **Graceful Degradation**: System continues operating with reduced functionality during overload
-- **Health Checks**: Comprehensive service health monitoring
-- **Timeout Management**: Request-level timeouts to prevent hanging operations
-- **Retry Mechanisms**: Intelligent retry with exponential backoff
-
-### Scaling Architecture
-
-#### Horizontal Scaling Guidelines
-```bash
-# CPU-intensive services (scale based on CPU usage)
-kubectl scale deployment tokenizer --replicas=5 -n ai-search
-
-# GPU-intensive services (scale based on GPU availability)
-kubectl scale deployment inference --replicas=3 -n ai-search
-
-# LLM orchestration (scale based on request volume)
-kubectl scale deployment llm-orchestrator --replicas=5 -n ai-search
-
-# Load balancing services (scale based on request volume)
-kubectl scale deployment gateway --replicas=8 -n ai-search
-```
-
-#### Auto-scaling Configuration
-- **HPA (Horizontal Pod Autoscaler)**: Automatically scales based on CPU/memory/custom metrics
-- **CPU Targets**: 70% CPU utilization trigger for scaling
-- **Memory Targets**: 80% memory utilization trigger for scaling
-- **Custom Metrics**: Request latency and queue depth for intelligent scaling
-
-### Why Go?
-- **Performance**: Excellent for high-throughput services
-- **Concurrency**: Built-in goroutines for handling multiple requests
-- **Deployment**: Single binary deployment
-- **Ecosystem**: Rich gRPC and HTTP libraries
-
-### Why gRPC for Internal Communication?
-- **Performance**: Binary protocol, faster than REST (2-10x throughput improvement)
-- **Type Safety**: Protocol buffers ensure consistent APIs
-- **Streaming**: Built-in bidirectional streaming with backpressure
-- **Load Balancing**: Automatic load balancing and service discovery
-- **Low Latency**: Sub-millisecond internal service communication
-
-## 📁 Project Structure
-
-```
-ai-search-service/
-├── cmd/                    # Service entry points
-│   ├── gateway/           # API gateway
-│   ├── search/            # Search service
-│   ├── tokenizer/         # Tokenizer service
-│   ├── inference/         # Inference service
-│   ├── safety/            # Safety service
-│   └── llm/               # LLM orchestrator service
-├── internal/              # Internal packages
-│   ├── config/           # Configuration management
-│   ├── logger/           # Logging utilities
-│   ├── gateway/          # Gateway implementation
-│   └── services/         # Service implementations
-├── proto/                 # Protocol buffer definitions
-├── web/                   # Frontend templates and static files
-├── k8s/                   # Kubernetes manifests
-├── docker-compose.yml     # Local development
-├── Makefile              # Build and deployment scripts
-└── README.md             # This file
-```
+- **Service Health**: Any service down > 1 minute
+- **High Latency**: 95th percentile > 10 seconds
+- **Error Rate**: >5% error rate sustained
+- **Resource Usage**: CPU >80% or Memory >85%
 
 ## 🚨 Troubleshooting
 
 ### Common Issues
 
-1. **Protocol buffer compilation errors**:
+**1. BART Model Loading Errors**
 ```bash
-make dev-setup
-make proto
+# Check inference service logs
+docker-compose logs inference
+
+# Common fix: Restart inference service
+docker-compose restart inference
 ```
 
-2. **Docker build failures**:
+**2. Device Placement Issues**
 ```bash
-make clean
-make build
+# Verify stable library versions in requirements.txt
+transformers==4.35.2
+torch==2.1.2
+
+# Restart Python services
+docker-compose restart python-tokenizer inference
 ```
 
-3. **Kubernetes deployment issues**:
+**3. gRPC Connection Errors**
 ```bash
-make undeploy-k8s
-make deploy-k8s
-make status
+# Check service connectivity
+docker-compose exec gateway ./gateway --help
+docker-compose exec llm ./llm --help
+
+# Restart orchestrator
+docker-compose restart llm
 ```
 
-4. **Service connection errors**:
+**4. Frontend Issues**
 ```bash
-make logs SERVICE=gateway
-kubectl get pods -n ai-search
+# Check JavaScript console for errors
+# Verify SSE connections in Network tab
+# Test API directly:
+curl -X POST http://localhost:8080/api/v1/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"test","safe_search":true,"num_results":3}'
 ```
 
-### Performance Tuning & Production Optimization
+### Performance Optimization
 
-#### 1. Scaling Based on Metrics
+**For Better Performance:**
 ```bash
-# Monitor current resource usage
-kubectl top pods -n ai-search
+# Increase inference service replicas
+docker-compose up -d --scale inference=2
 
-# Scale CPU-intensive services
-kubectl scale deployment tokenizer --replicas=5 -n ai-search
+# Monitor resource usage
+docker stats
 
-# Scale GPU-intensive services (based on GPU availability)
-kubectl scale deployment inference --replicas=3 -n ai-search
-
-# Scale based on request volume
-kubectl scale deployment gateway --replicas=8 -n ai-search
+# Tune concurrent request limits in code:
+# - orchestrator.go: maxConcurrentRequests
+# - inference/main.py: max_concurrent_requests
 ```
 
-#### 2. Load Testing & Capacity Planning
+## 📁 Project Structure
+
+```
+ai-summary-inference/
+├── cmd/                          # Service entry points
+│   ├── gateway/main.go          # HTTP API gateway
+│   ├── llm/main.go              # LLM orchestration service
+│   ├── search/main.go           # Search service
+│   ├── safety/main.go           # Safety validation service
+│   ├── tokenizer-python/main.py # BART tokenization service
+│   └── inference-python/main.py # BART inference service
+├── internal/                     # Internal Go packages
+│   ├── config/                  # Configuration management
+│   ├── gateway/                 # Gateway implementation
+│   ├── logger/                  # Logging utilities
+│   ├── monitoring/              # Metrics collection
+│   └── services/                # Service implementations
+├── proto/                        # Protocol buffer definitions
+│   ├── search.proto             # Service contracts
+│   ├── search.pb.go             # Generated Go code
+│   └── search_pb2.py            # Generated Python code
+├── web/                          # Frontend resources
+│   ├── templates/index.html     # Main web interface
+│   └── static/                  # CSS, JS, images
+├── monitoring/                   # Monitoring configuration
+│   ├── prometheus.yml           # Prometheus config
+│   └── grafana/                 # Grafana dashboards
+├── docker-compose.yml            # Local development setup
+├── Makefile                      # Build automation
+├── config.yaml                   # Service configuration
+└── README.md                     # This file
+```
+
+## 🔄 Deployment Options
+
+### Local Development (Current)
 ```bash
-# Run load tests to determine optimal scaling
-make test-backpressure
+# Full stack with monitoring
+docker-compose up -d
 
-# Test with different concurrency levels
-./scripts/load-test.sh --concurrent-users=100 --ramp-duration=60s
-./scripts/load-test.sh --concurrent-users=500 --ramp-duration=120s
+# Application only
+docker-compose up -d gateway llm search safety python-tokenizer inference redis
 ```
 
-#### 3. Circuit Breaker Configuration
-Monitor and tune circuit breaker thresholds based on your traffic patterns:
-- **Failure Threshold**: 50% error rate triggers circuit open
-- **Reset Timeout**: 30 seconds before attempting to close circuit
-- **Success Threshold**: 3 consecutive successes to close circuit
+### Production Considerations
+- **Container Orchestration**: Kubernetes deployment ready
+- **Load Balancing**: Multiple gateway replicas
+- **Resource Allocation**: Separate CPU/GPU node pools
+- **Monitoring**: External Prometheus/Grafana cluster
+- **Secrets Management**: External secret stores
+- **Caching**: Redis cluster for high availability
 
-#### 4. gRPC Streaming Optimization
-- **Connection Pooling**: Reuse gRPC connections for better performance
-- **Streaming Buffer Size**: Tune based on token generation speed
-- **Backpressure Thresholds**: Adjust based on downstream service capacity
-
-#### 5. Resource Requests & Limits
-```yaml
-# Recommended resource settings for production
-resources:
-  requests:
-    cpu: "500m"      # Tokenizer: CPU-bound
-    memory: "512Mi"
-  limits:
-    cpu: "2000m"     # Inference: GPU + CPU
-    memory: "2Gi"
-```
-
-## 🏭 Production Deployment Best Practices
-
-### Environment Configuration
-```bash
-# Production environment variables
-export ENVIRONMENT=production
-export LOG_LEVEL=warn
-export REDIS_CLUSTER_MODE=true
-export ENABLE_METRICS=true
-export ENABLE_TRACING=true
-```
-
-### High Availability Setup
-```yaml
-# Multi-zone deployment for fault tolerance
-apiVersion: apps/v1
-kind: Deployment
-spec:
-  replicas: 3
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  template:
-    spec:
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values: ["ai-search-gateway"]
-              topologyKey: topology.kubernetes.io/zone
-```
-
-### Security Hardening
-- **Network Policies**: Restrict inter-service communication
-- **Pod Security Standards**: Enforce restricted security contexts
-- **RBAC**: Minimal required permissions for service accounts
-- **Secrets Management**: Use Kubernetes secrets or external secret managers
-- **Image Scanning**: Regular vulnerability scanning of container images
-
-### Monitoring & Alerting in Production
-```yaml
-# Critical alerts for production
-alerts:
-  - name: ServiceDown
-    condition: up == 0
-    for: 1m
-    severity: critical
-  
-  - name: HighErrorRate
-    condition: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
-    for: 2m
-    severity: warning
-  
-  - name: HighLatency
-    condition: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
-    for: 5m
-    severity: warning
-```
-
-### Backup & Disaster Recovery
-- **Redis Backup**: Automated Redis persistence and backup
-- **Configuration Backup**: Version-controlled configuration management
-- **Multi-Region**: Deploy across multiple regions for disaster recovery
-- **RTO/RPO Targets**: Recovery Time Objective < 15 minutes, Recovery Point Objective < 5 minutes
+### Scaling Strategy
+- **Gateway**: Scale horizontally based on request volume
+- **LLM Orchestrator**: Scale based on coordination overhead  
+- **Tokenizer**: Scale based on CPU usage (CPU-bound)
+- **Inference**: Scale based on model capacity (memory-bound)
+- **Search/Safety**: Scale based on API rate limits
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Add tests
-5. Submit a pull request
+4. Add tests for new functionality
+5. Ensure all services pass health checks
+6. Submit a pull request
+
+### Development Guidelines
+- Follow Go best practices and gofmt
+- Add comprehensive error handling
+- Include unit tests for new functions
+- Update documentation for API changes
+- Test with both streaming and non-streaming modes
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🔄 Modern Streaming Architecture
+## 🎯 Production Readiness
 
-This system implements industry-standard streaming patterns optimized for AI inference workloads:
+This system demonstrates:
+- **Microservices Architecture**: Proper service separation and communication
+- **AI/ML Integration**: Real transformer model deployment
+- **Streaming Architecture**: Modern real-time response patterns
+- **Observability**: Comprehensive monitoring and logging
+- **Safety Engineering**: Input validation and output sanitization
+- **Performance Optimization**: Efficient resource utilization
+- **Fault Tolerance**: Graceful error handling and recovery
 
-### Communication Flow
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Client    │───▶│   Gateway   │───▶│   Search    │
-│ (SSE Stream)│    │(HTTP + gRPC)│    │  Service    │
-└─────────────┘    └─────────────┘    └─────────────┘
-       ▲                   │                   │
-       │                   ▼                   ▼
-       │            ┌─────────────┐    ┌─────────────┐
-       │            │     LLM     │    │    Redis    │
-       │            │Orchestrator │    │   Cache     │
-       │            └─────────────┘    └─────────────┘
-       │                   │
-       │                   ▼
-       │            ┌─────────────┐    ┌─────────────┐
-       │            │  Tokenizer  │───▶│    vLLM     │
-       │            │   Service   │    │   Engine    │
-       │            └─────────────┘    └─────────────┘
-       │                   │                   │
-       │                   ▼                   ▼
-       │            ┌─────────────┐    ┌─────────────┐
-       └────────────│  Inference  │───▶│    vLLM     │
-         (Streaming)│   Service   │    │ Enterprise  │
-                    └─────────────┘    └─────────────┘
-```
-
-### Enterprise AI Processing Flow
-1. **Client Request**: HTTP/SSE to Gateway
-2. **Gateway**: Routes to LLM Orchestrator via gRPC
-3. **LLM Orchestrator**: Coordinates the AI workflow:
-   - Sends text to Tokenizer Service (CPU-optimized)
-   - Receives token IDs from Tokenizer
-   - Sends tokens to Inference Service (GPU-optimized)
-   - Inference Service calls vLLM engine with tokens
-4. **Real-time Streaming**: Tokens stream back through the chain
-5. **Client**: Receives real-time token stream via SSE
-
-### Why This Architecture?
-- **SSE for Clients**: Universal browser support, simple debugging
-- **gRPC Internal**: High-performance service-to-service communication
-- **Direct Streaming**: Real-time token streaming from vLLM to client
-- **Token-Native**: Enterprise-grade tokenization with vLLM integration
-- **No Message Queues**: Simplified operations, lower latency
-
-### Industry Alignment
-- **OpenAI Pattern**: Similar to ChatGPT's streaming architecture
-- **Cloud Native**: Follows CNCF best practices for microservices
-- **Production Proven**: Based on patterns used by major AI companies
-- **vLLM Integration**: Uses industry-standard inference engine
-
-## 🙏 Acknowledgments
-
-- Built with Go and gRPC for high-performance streaming
-- Designed for Kubernetes deployment with cloud-native patterns
-- Optimized for both local development and production scaling
-- Inspired by modern AI inference architectures (OpenAI, Anthropic)
-- Follows industry best practices for fault tolerance and observability
-- Integrates vLLM for enterprise-grade AI inference 
+Perfect for showcasing modern AI infrastructure engineering capabilities.
