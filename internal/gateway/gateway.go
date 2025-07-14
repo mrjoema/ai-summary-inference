@@ -173,15 +173,23 @@ func (g *Gateway) Metrics(c *gin.Context) {
 
 func (g *Gateway) Search(c *gin.Context) {
 	start := time.Now()
+	log := logger.GetLogger()
 	
-	// Check if client wants streaming (Accept header or query param)
-	wantsStreaming := c.GetHeader("Accept") == "text/event-stream" || 
-					 c.Query("streaming") == "true"
+	// Debug: Log request details
+	log.Infof("🔍 Search request - Method: %s, Accept: %s, ContentType: %s", 
+		c.Request.Method, c.GetHeader("Accept"), c.GetHeader("Content-Type"))
 	
-	if wantsStreaming {
+	// Determine mode based on request method and parameters
+	if c.Request.Method == "GET" {
+		// GET requests with query params are streaming mode
+		log.Infof("Routing to streaming mode (GET)")
 		g.searchWithStreaming(c, start)
-	} else {
+	} else if c.Request.Method == "POST" {
+		// POST requests are non-streaming mode (but may use SSE)
+		log.Infof("Routing to non-streaming mode (POST)")
 		g.searchWithoutStreaming(c, start)
+	} else {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed"})
 	}
 }
 
@@ -231,33 +239,74 @@ func (g *Gateway) searchWithStreaming(c *gin.Context, start time.Time) {
 	g.processAndStreamSearch(c, query, safeSearch, numResults)
 }
 
-// searchWithoutStreaming handles non-streaming requests with immediate search results
+// searchWithoutStreaming handles non-streaming requests with SSE (search results first, then complete summary)
 func (g *Gateway) searchWithoutStreaming(c *gin.Context, start time.Time) {
+	log := logger.GetLogger()
+	log.Infof("📝 Non-streaming function called - parsing JSON body")
+	
 	var req SearchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Errorf("Failed to parse JSON body: %v", err)
 		monitoring.RecordRequest("gateway", "search", "error")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	
+	log.Infof("✅ Parsed JSON - Query: %s, SafeSearch: %t, NumResults: %d", req.Query, req.SafeSearch, req.NumResults)
+	
+	// Check if client wants SSE (Accept header includes text/event-stream)
+	acceptHeader := c.GetHeader("Accept")
+	wantsSSE := strings.Contains(acceptHeader, "text/event-stream")
+	
 	// Check system capacity
 	if !g.checkSystemCapacity() {
 		monitoring.RecordRequest("gateway", "search", "rejected")
-		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error":       "System overloaded, please try again later",
-			"retry_after": 30,
-		})
+		if wantsSSE {
+			// Set SSE headers for error response
+			c.Header("Content-Type", "text/event-stream")
+			c.Header("Cache-Control", "no-cache")
+			c.Header("Connection", "keep-alive")
+			c.SSEvent("error", gin.H{
+				"message": "System overloaded, please try again later",
+				"retry_after": 30,
+			})
+		} else {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":       "System overloaded, please try again later",
+				"retry_after": 30,
+			})
+		}
 		return
 	}
 	
-	// Process search and return results immediately (search results first, summary later)
-	result := g.processSearchResultsFirst(req)
+	if wantsSSE {
+		// Set SSE headers for non-streaming mode (like streaming, but complete summary)
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+		c.Header("X-Accel-Buffering", "no") // Disable nginx buffering
+		
+		// Process search with SSE events (search results first, then complete AI summary)
+		numResults := req.NumResults
+		if numResults == 0 {
+			numResults = 5
+		}
+		
+		g.processNonStreamingSSE(c, req.Query, req.SafeSearch, numResults)
+	} else {
+		// Process as regular JSON response (non-SSE mode)
+		numResults := req.NumResults
+		if numResults == 0 {
+			numResults = 5
+		}
+		
+		// Process the search synchronously and return JSON
+		g.processNonStreamingJSON(c, req.Query, req.SafeSearch, numResults)
+	}
 	
 	// Record metrics
 	monitoring.RecordRequest("gateway", "search", "success")
 	monitoring.RecordRequestDuration("gateway", "search", time.Since(start))
-	
-	c.JSON(http.StatusOK, result)
 }
 
 // processAndStreamSearch handles streaming search with immediate response
@@ -466,58 +515,61 @@ func (g *Gateway) processAndStreamSearch(c *gin.Context, query string, safeSearc
 	}
 }
 
-// processSearchResultsFirst returns search results immediately, starts AI summary generation in background
-func (g *Gateway) processSearchResultsFirst(req SearchRequest) SearchResponse {
+
+// processNonStreamingSSE handles non-streaming search with SSE (search results first, then complete AI summary)
+func (g *Gateway) processNonStreamingSSE(c *gin.Context, query string, safeSearch bool, numResults int) {
 	ctx := context.Background()
 	log := logger.GetLogger()
 	
-	// Step 1: Validate input
+	// 1. Send initial status
+	c.SSEvent("status", gin.H{
+		"type": "started",
+		"query": query,
+		"timestamp": time.Now().Unix(),
+	})
+	c.Writer.Flush()
+	
+	// 2. Validate input
+	c.SSEvent("status", gin.H{"type": "validating"})
+	c.Writer.Flush()
+	
 	safetyResp, err := g.safetyClient.ValidateInput(ctx, &pb.ValidateInputRequest{
-		Text:       req.Query,
-		ClientIp:   "",
-		SafeSearch: req.SafeSearch,
+		Text:       query,
+		ClientIp:   c.ClientIP(),
+		SafeSearch: safeSearch,
 	})
 	if err != nil {
 		log.Errorf("Safety validation failed: %v", err)
-		return SearchResponse{
-			Query:  req.Query,
-			Status: "failed",
-			Error:  "Safety validation failed",
-		}
+		c.SSEvent("error", gin.H{"message": "Safety validation failed"})
+		return
 	}
 	
 	if !safetyResp.IsSafe {
-		return SearchResponse{
-			Query:  req.Query,
-			Status: "failed",
-			Error:  "Query contains unsafe content",
-		}
+		c.SSEvent("error", gin.H{"message": "Query contains unsafe content"})
+		return
 	}
 	
-	// Step 2: Perform search and return results immediately
+	// 3. Perform search
+	c.SSEvent("status", gin.H{"type": "searching"})
+	c.Writer.Flush()
+	
 	searchResp, err := g.searchClient.Search(ctx, &pb.SearchRequest{
 		Query:      safetyResp.SanitizedText,
-		SafeSearch: req.SafeSearch,
-		NumResults: int32(req.NumResults),
+		SafeSearch: safeSearch,
+		NumResults: int32(numResults),
 	})
 	if err != nil {
 		log.Errorf("Search failed: %v", err)
-		return SearchResponse{
-			Query:  req.Query,
-			Status: "failed",
-			Error:  "Search failed",
-		}
+		c.SSEvent("error", gin.H{"message": "Search failed"})
+		return
 	}
 	
 	if !searchResp.Success {
-		return SearchResponse{
-			Query:  req.Query,
-			Status: "failed",
-			Error:  searchResp.Error,
-		}
+		c.SSEvent("error", gin.H{"message": searchResp.Error})
+		return
 	}
 	
-	// Convert search results
+	// 4. IMMEDIATELY stream search results (like streaming mode)
 	searchResults := make([]SearchResult, len(searchResp.Results))
 	for i, result := range searchResp.Results {
 		searchResults[i] = SearchResult{
@@ -528,69 +580,196 @@ func (g *Gateway) processSearchResultsFirst(req SearchRequest) SearchResponse {
 		}
 	}
 	
-	log.Infof("🔍 Search results ready for non-streaming mode, now generating AI summary...")
+	c.SSEvent("search_results", gin.H{
+		"type": "search_results",
+		"results": searchResults,
+	})
+	c.Writer.Flush()
 	
-	// Step 3: Generate AI summary (like streaming mode, but return complete response)
+	log.Infof("🔍 Non-streaming SSE: Search results sent, now generating complete AI summary...")
+	
+	// 5. Start AI summarization
+	c.SSEvent("status", gin.H{"type": "summarizing"})
+	c.Writer.Flush()
+	
+	// Prepare text for summarization
 	var textToSummarize string
 	for _, result := range searchResults {
 		textToSummarize += result.Title + " " + result.Snippet + " "
 	}
 	
-	// Submit LLM request
+	// Submit NON-STREAMING LLM request (complete summary, not token-by-token)
 	llmReq := &pb.LLMRequest{
-		Id:        fmt.Sprintf("nonstream_%d", time.Now().UnixNano()),
+		Id:        fmt.Sprintf("nonstream_sse_%d", time.Now().UnixNano()),
 		Text:      textToSummarize,
 		MaxTokens: 150,
-		Stream:    false, // Non-streaming summary
+		Stream:    false, // Key difference: complete summary at once
 		CreatedAt: time.Now().Unix(),
 	}
 	
+	// Get complete AI summary
 	response, err := g.llmClient.ProcessRequest(ctx, llmReq)
-	var summary string
 	if err != nil {
 		log.Errorf("Failed to process LLM request: %v", err)
-		summary = "AI summarization failed"
+		c.SSEvent("error", gin.H{"message": "AI summarization failed"})
+		return
+	}
+	
+	var summary string
+	if response.Error != "" {
+		log.Infof("LLM response has error: %s", response.Error)
+		summary = "Summary unavailable"
 	} else {
-		if response.Error != "" {
-			log.Infof("LLM response has error: %s", response.Error)
-			summary = "Summary unavailable"
+		rawSummary := response.Summary
+		if rawSummary == "" {
+			// Reconstruct from tokens
+			for _, token := range response.Tokens {
+				rawSummary += token
+			}
+		}
+		
+		// CRITICAL: Sanitize AI output before returning to user
+		safetyCtx, safetyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer safetyCancel()
+		
+		sanitizeResp, err := g.safetyClient.SanitizeOutput(safetyCtx, &pb.SanitizeOutputRequest{
+			Text: rawSummary,
+		})
+		
+		if err != nil {
+			log.Errorf("Failed to sanitize AI output: %v", err)
+			summary = "Summary sanitization failed"
 		} else {
-			rawSummary := response.Summary
-			if rawSummary == "" {
-				// Reconstruct from tokens
-				for _, token := range response.Tokens {
-					rawSummary += token
-				}
-			}
-			
-			// CRITICAL: Sanitize AI output before returning to user
-			safetyCtx, safetyCancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer safetyCancel()
-			
-			sanitizeResp, err := g.safetyClient.SanitizeOutput(safetyCtx, &pb.SanitizeOutputRequest{
-				Text: rawSummary,
-			})
-			
-			if err != nil {
-				log.Errorf("Failed to sanitize AI output: %v", err)
-				summary = "Summary sanitization failed"
-			} else {
-				summary = sanitizeResp.SanitizedText
-			}
+			summary = sanitizeResp.SanitizedText
 		}
 	}
 	
-	log.Infof("✅ Non-streaming mode completed with search results AND AI summary")
+	// 6. Send complete AI summary at once (not token-by-token like streaming)
+	c.SSEvent("summary", gin.H{
+		"type": "summary_complete", // Different type to distinguish from streaming
+		"text": summary,
+	})
+	c.Writer.Flush()
 	
-	// Return complete response with both search results and summary
-	return SearchResponse{
-		Query:         req.Query,
-		Status:        "completed",
-		SearchResults: searchResults,
-		Summary:       summary, // Include AI summary in response
-	}
+	log.Infof("✅ Non-streaming SSE completed - sent search results first, then complete AI summary")
+	
+	// 7. Send completion signal
+	c.SSEvent("complete", gin.H{"type": "complete"})
+	c.Writer.Flush()
 }
 
+// processNonStreamingJSON handles non-streaming search with JSON response
+func (g *Gateway) processNonStreamingJSON(c *gin.Context, query string, safeSearch bool, numResults int) {
+	ctx := context.Background()
+	log := logger.GetLogger()
+	
+	// 1. Validate input
+	safetyResp, err := g.safetyClient.ValidateInput(ctx, &pb.ValidateInputRequest{
+		Text:       query,
+		ClientIp:   c.ClientIP(),
+		SafeSearch: safeSearch,
+	})
+	if err != nil {
+		log.Errorf("Safety validation failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Safety validation failed"})
+		return
+	}
+	
+	if !safetyResp.IsSafe {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query contains unsafe content"})
+		return
+	}
+	
+	// 2. Perform search
+	searchResp, err := g.searchClient.Search(ctx, &pb.SearchRequest{
+		Query:      safetyResp.SanitizedText,
+		SafeSearch: safeSearch,
+		NumResults: int32(numResults),
+	})
+	if err != nil {
+		log.Errorf("Search failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		return
+	}
+	
+	if !searchResp.Success {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": searchResp.Error})
+		return
+	}
+	
+	// 3. Convert search results
+	searchResults := make([]SearchResult, len(searchResp.Results))
+	for i, result := range searchResp.Results {
+		searchResults[i] = SearchResult{
+			Title:      result.Title,
+			URL:        result.Url,
+			Snippet:    result.Snippet,
+			DisplayURL: result.DisplayUrl,
+		}
+	}
+	
+	// 4. Generate AI summary
+	var textToSummarize string
+	for _, result := range searchResults {
+		textToSummarize += result.Title + " " + result.Snippet + " "
+	}
+	
+	// Submit NON-STREAMING LLM request
+	llmReq := &pb.LLMRequest{
+		Id:        fmt.Sprintf("json_%d", time.Now().UnixNano()),
+		Text:      textToSummarize,
+		MaxTokens: 150,
+		Stream:    false,
+		CreatedAt: time.Now().Unix(),
+	}
+	
+	// Get complete AI summary
+	response, err := g.llmClient.ProcessRequest(ctx, llmReq)
+	if err != nil {
+		log.Errorf("Failed to process LLM request: %v", err)
+		c.JSON(http.StatusOK, SearchResponse{
+			Query:         query,
+			Status:        "completed",
+			SearchResults: searchResults,
+			Summary:       "AI summarization failed",
+		})
+		return
+	}
+	
+	var summary string
+	if response.Error != "" {
+		log.Infof("LLM response has error: %s", response.Error)
+		summary = "Summary unavailable"
+	} else {
+		rawSummary := response.Summary
+		if rawSummary == "" {
+			// Reconstruct from tokens
+			for _, token := range response.Tokens {
+				rawSummary += token
+			}
+		}
+		
+		// Sanitize AI output
+		sanitizeResp, err := g.safetyClient.SanitizeOutput(ctx, &pb.SanitizeOutputRequest{
+			Text: rawSummary,
+		})
+		
+		if err != nil {
+			log.Errorf("Failed to sanitize AI output: %v", err)
+			summary = "Summary sanitization failed"
+		} else {
+			summary = sanitizeResp.SanitizedText
+		}
+	}
+	
+	// 5. Return complete response
+	c.JSON(http.StatusOK, SearchResponse{
+		Query:         query,
+		Status:        "completed",
+		SearchResults: searchResults,
+		Summary:       summary,
+	})
+}
 
 // checkSystemCapacity checks if the system can handle more requests
 func (g *Gateway) checkSystemCapacity() bool {

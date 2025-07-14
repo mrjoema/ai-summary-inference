@@ -333,6 +333,7 @@
 
     <script>
         let eventSource = null;
+        let nonStreamingReader = null; // Track non-streaming connection
         let isStreamingMode = false;
 
         document.getElementById('searchForm').addEventListener('submit', async (e) => {
@@ -348,6 +349,9 @@
 
             if (!query) return;
 
+            // Cancel any existing connections
+            resetUI();
+
             // Reset UI
             document.getElementById('searchButton').disabled = true;
             document.getElementById('searchButton').textContent = 'Searching...';
@@ -357,42 +361,21 @@
             document.getElementById('summaryContent').textContent = '';
             document.getElementById('streamingIndicator').style.display = 'none';
             
+            // Clear any existing error messages
+            const existingErrors = document.querySelectorAll('.error');
+            existingErrors.forEach(error => error.remove());
+            
             // Set streaming mode flag
             isStreamingMode = streaming;
             window._hasStreamedTokens = false;
             
             try {
                 if (streaming) {
-                    // Use streaming API
+                    // Use streaming API (token-by-token)
                     startDirectStreaming(query, safeSearch, numResults);
                 } else {
-                    // Use non-streaming API
-                    const response = await fetch('/api/v1/search', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            query,
-                            safe_search: safeSearch,
-                            num_results: numResults
-                        })
-                    });
-
-                    const data = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(data.error || 'Search failed');
-                    }
-
-                    // Display results immediately for non-streaming
-                    if (data.search_results) {
-                        displaySearchResults(data.search_results);
-                    }
-                    if (data.summary) {
-                        displaySummary(data.summary);
-                    }
-                    resetUI();
+                    // Use non-streaming API (SSE but complete summary at once)
+                    startNonStreamingSSE(query, safeSearch, numResults);
                 }
 
             } catch (error) {
@@ -463,6 +446,160 @@
                 eventSource.close();
                 resetUI();
             });
+        }
+
+        function startNonStreamingSSE(query, safeSearch, numResults) {
+            // Non-streaming mode with SSE support
+            // First, check if we should use SSE or JSON
+            const useSSE = true; // Always use SSE for non-streaming as per user request
+            
+            if (useSSE) {
+                // Use SSE for non-streaming mode
+                fetch('/api/v1/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'text/event-stream'
+                    },
+                    body: JSON.stringify({
+                        query,
+                        safe_search: safeSearch,
+                        num_results: numResults
+                    })
+                }).then(response => {
+                    if (!response.ok) {
+                        throw new Error('Search request failed');
+                    }
+                    
+                    // Handle SSE response
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    function processSSE() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                resetUI();
+                                return;
+                            }
+                            
+                            buffer += decoder.decode(value, { stream: true });
+                            
+                            // Process complete SSE events
+                            while (buffer.includes('\n\n')) {
+                                const eventEnd = buffer.indexOf('\n\n');
+                                const eventText = buffer.substring(0, eventEnd);
+                                buffer = buffer.substring(eventEnd + 2);
+                                
+                                // Parse SSE event
+                                const lines = eventText.split('\n');
+                                let eventType = null;
+                                let eventData = null;
+                                
+                                for (const line of lines) {
+                                    if (line.startsWith('event:')) {
+                                        eventType = line.substring(6).trim();
+                                    } else if (line.startsWith('data:')) {
+                                        eventData = line.substring(5).trim();
+                                    }
+                                }
+                                
+                                // Handle the SSE event
+                                if (eventData) {
+                                    try {
+                                        const data = JSON.parse(eventData);
+                                        handleNonStreamingUpdate(data, eventType || 'message');
+                                    } catch (error) {
+                                        console.error('Error parsing SSE data:', error);
+                                    }
+                                }
+                            }
+                            
+                            processSSE();
+                        }).catch(error => {
+                            console.error('SSE stream error:', error);
+                            showError('Connection failed');
+                            resetUI();
+                        });
+                    }
+                    
+                    processSSE();
+                }).catch(error => {
+                    console.error('Non-streaming SSE request failed:', error);
+                    showError('Search failed: ' + error.message);
+                    resetUI();
+                });
+            } else {
+                // Fallback to JSON mode
+                fetch('/api/v1/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query,
+                        safe_search: safeSearch,
+                        num_results: numResults
+                    })
+                }).then(response => response.json())
+                .then(data => {
+                    // Display search results immediately
+                    if (data.search_results && data.search_results.length > 0) {
+                        displaySearchResults(data.search_results);
+                    }
+                    
+                    // Display AI summary
+                    if (data.summary) {
+                        displaySummary(data.summary);
+                    }
+                    
+                    updateStatus('completed', 'Search completed');
+                    resetUI();
+                }).catch(error => {
+                    console.error('Non-streaming request failed:', error);
+                    showError('Search failed: ' + error.message);
+                    resetUI();
+                });
+            }
+        }
+
+        function handleNonStreamingUpdate(data, eventType = 'message') {
+            console.log('Non-streaming update:', { eventType, data });
+            
+            // Handle different types of non-streaming SSE updates
+            // Use eventType from SSE first, fall back to data.type
+            const type = eventType === 'message' ? data.type : eventType;
+            
+            if (type === 'status') {
+                if (data.type === 'started') {
+                    updateStatus('started', 'Search started...');
+                } else if (data.type === 'validating') {
+                    updateStatus('validating', 'Validating query...');
+                } else if (data.type === 'searching') {
+                    updateStatus('searching', 'Searching the web...');
+                } else if (data.type === 'summarizing') {
+                    updateStatus('summarizing', 'AI is generating summary...');
+                }
+            } else if (type === 'search_results') {
+                updateStatus('processing', 'Found search results, analyzing...');
+                if (data.results) {
+                    displaySearchResults(data.results);
+                }
+            } else if (type === 'summary' || data.type === 'summary_complete') {
+                // Complete summary received at once (not token-by-token)
+                if (data.text) {
+                    displaySummary(data.text);
+                }
+                updateStatus('completed', 'Summary completed');
+            } else if (type === 'complete') {
+                // Processing completed
+                updateStatus('completed', 'Search completed');
+                resetUI();
+            } else if (type === 'error') {
+                // Handle errors
+                showError(data.message || 'An error occurred');
+                resetUI();
+            }
         }
 
         function handleStreamingUpdate(data) {
@@ -658,9 +795,20 @@
             document.getElementById('searchButton').disabled = false;
             document.getElementById('searchButton').textContent = 'Search';
             
+            // Clean up streaming connections
             if (eventSource) {
                 eventSource.close();
                 eventSource = null;
+            }
+            
+            // Clean up non-streaming connections
+            if (nonStreamingReader) {
+                try {
+                    nonStreamingReader.cancel();
+                } catch (e) {
+                    console.log('Reader already closed');
+                }
+                nonStreamingReader = null;
             }
             
             // Reset streaming mode flag
