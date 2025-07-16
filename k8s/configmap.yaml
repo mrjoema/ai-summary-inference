@@ -20,7 +20,7 @@ data:
       
       tokenizer:
         host: tokenizer-service
-        port: 8082
+        port: 8090
         timeout: 5s
       
       inference:
@@ -32,12 +32,6 @@ data:
         host: safety-service
         port: 8084
         timeout: 5s
-    
-    redis:
-      host: redis-service
-      port: 6379
-      password: ""
-      db: 0
     
     google:
       api_key: ""  # Set via environment variable

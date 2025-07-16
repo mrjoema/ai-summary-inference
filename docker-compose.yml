@@ -1,38 +1,6 @@
 # Docker Compose file for AI Search Engine with Monitoring
 
 services:
-  # Redis for caching
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    networks:
-      - ai-search-network
-
-  # vLLM service for enterprise token-native AI inference (disabled for development)
-  # Note: vLLM requires GPU or specific CPU setup that may not be available in all environments
-  # The system gracefully falls back to mock summaries when vLLM is unavailable
-  vllm:
-    image: nginx:alpine  # Placeholder service to maintain architecture
-    ports:
-      - "8000:80"
-    command: >
-      sh -c "echo 'vLLM placeholder - system uses mock summaries' && nginx -g 'daemon off;'"
-    networks:
-      - ai-search-network
-    # Uncomment for GPU support
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-
-
   # Safety service
   safety:
     build:
@@ -44,10 +12,7 @@ services:
       - "8084:8084"
     environment:
       - SERVICE_NAME=safety
-      - REDIS_HOST=redis
       - LOG_LEVEL=info
-    depends_on:
-      - redis
     networks:
       - ai-search-network
 
@@ -62,12 +27,9 @@ services:
       - "8081:8081"
     environment:
       - SERVICE_NAME=search
-      - REDIS_HOST=redis
       - LOG_LEVEL=info
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_CX=${GOOGLE_CX:-}
-    depends_on:
-      - redis
     networks:
       - ai-search-network
 
@@ -77,15 +39,13 @@ services:
       context: .
       dockerfile: Dockerfile.tokenizer-python
     ports:
-      - "8082:8082"
+      - "8090:8090"
     environment:
-      - REDIS_HOST=redis
       - TRANSFORMERS_CACHE=/app/models
       - HF_HOME=/app/models
+      - TOKENIZER_PORT=8090
     volumes:
       - tokenizer_models:/app/models  # Persist tokenizer models
-    depends_on:
-      - redis
     deploy:
       resources:
         limits:
@@ -110,8 +70,6 @@ services:
       - HF_HOME=/app/models
     volumes:
       - inference_models:/app/models  # Persist model cache
-    depends_on:
-      - redis
     deploy:
       resources:
         limits:
@@ -130,13 +88,14 @@ services:
       args:
         SERVICE_NAME: llm
     ports:
-      - "8086:8085"
+      - "8086:8086"
     command: ["./llm"]
     environment:
       - SERVICE_NAME=llm
       - TOKENIZER_HOST=tokenizer
       - INFERENCE_HOST=inference
       - LLM_MAX_WORKERS=10
+      - LLM_PORT=8086
       - LOG_LEVEL=info
     depends_on:
       - tokenizer
@@ -153,8 +112,6 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - REDIS_HOST=redis
-      - VLLM_HOST=vllm
       - SEARCH_HOST=search
       - TOKENIZER_HOST=tokenizer
       - INFERENCE_HOST=inference
@@ -164,8 +121,6 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
       - GOOGLE_CX=${GOOGLE_CX:-}
     depends_on:
-      - redis
-      - vllm
       - safety
       - search
       - tokenizer
@@ -244,7 +199,6 @@ services:
       - ai-search-network
 
 volumes:
-  redis_data:
   prometheus_data:
   grafana_data:
   tokenizer_models:  # Persist tokenizer model downloads

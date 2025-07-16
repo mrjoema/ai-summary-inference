@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -22,7 +21,6 @@ import (
 
 type Gateway struct {
 	config          *config.Config
-	redis           *redis.Client
 	searchClient    pb.SearchServiceClient
 	safetyClient    pb.SafetyServiceClient
 	inferenceClient pb.InferenceServiceClient
@@ -58,20 +56,6 @@ func NewGateway(cfg *config.Config) (*Gateway, error) {
 	metricsCollector, err := monitoring.NewMetricsCollector("gateway")
 	if err != nil {
 		logger.GetLogger().Warnf("Failed to initialize metrics collector: %v", err)
-	}
-
-	// Initialize Redis client
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port),
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
-	})
-
-	// Test Redis connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		logger.GetLogger().Warnf("Redis connection failed: %v", err)
 	}
 
 	// Connect to LLM orchestrator service
@@ -111,7 +95,6 @@ func NewGateway(cfg *config.Config) (*Gateway, error) {
 	// Initialize gateway
 	g := &Gateway{
 		config:          cfg,
-		redis:           redisClient,
 		searchClient:    pb.NewSearchServiceClient(searchConn),
 		safetyClient:    pb.NewSafetyServiceClient(safetyConn),
 		inferenceClient: pb.NewInferenceServiceClient(inferenceConn),

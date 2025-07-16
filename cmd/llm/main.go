@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -30,7 +31,7 @@ func main() {
 	logger.InitLogger(cfg.LogLevel)
 
 	// Create listener
-	lis, err := net.Listen("tcp", ":8085")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Services.LLM.Port))
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -49,7 +50,7 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("LLM Orchestrator service starting on port 8085")
+		log.Printf("LLM Orchestrator service starting on port %d", cfg.Services.LLM.Port)
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("Failed to serve: %v", err)
 		}

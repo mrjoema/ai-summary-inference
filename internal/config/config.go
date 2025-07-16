@@ -14,8 +14,6 @@ type Config struct {
 	LogLevel    string         `mapstructure:"log_level"`
 	Gateway     GatewayConfig  `mapstructure:"gateway"`
 	Services    ServicesConfig `mapstructure:"services"`
-	VLLM        VLLMConfig     `mapstructure:"vllm"`
-	Redis       RedisConfig    `mapstructure:"redis"`
 	Google      GoogleConfig   `mapstructure:"google"`
 	LLM         LLMConfig      `mapstructure:"llm"`
 }
@@ -39,27 +37,11 @@ type ServiceConfig struct {
 	Timeout time.Duration `mapstructure:"timeout"`
 }
 
-type RedisConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
-}
-
 type GoogleConfig struct {
 	APIKey string `mapstructure:"api_key"`
 	CX     string `mapstructure:"cx"`
 }
 
-
-type VLLMConfig struct {
-	Host        string        `mapstructure:"host"`
-	Port        int           `mapstructure:"port"`
-	Model       string        `mapstructure:"model"`
-	Temperature float64       `mapstructure:"temperature"`
-	MaxTokens   int           `mapstructure:"max_tokens"`
-	Timeout     time.Duration `mapstructure:"timeout"`
-}
 
 type LLMConfig struct {
 	MaxWorkers   int `mapstructure:"max_workers"`
@@ -97,11 +79,6 @@ func LoadConfig() (*Config, error) {
 	return &config, nil
 }
 
-// GetRedisAddress returns the Redis address
-func (c *Config) GetRedisAddress() string {
-	return fmt.Sprintf("%s:%d", c.Redis.Host, c.Redis.Port)
-}
-
 
 // GetInferenceAddress returns the inference service address
 func (c *Config) GetInferenceAddress() string {
@@ -133,7 +110,7 @@ func setDefaults() {
 	viper.SetDefault("services.search.timeout", "10s")
 
 	viper.SetDefault("services.tokenizer.host", "localhost")
-	viper.SetDefault("services.tokenizer.port", 8082)
+	viper.SetDefault("services.tokenizer.port", 8090)
 	viper.SetDefault("services.tokenizer.timeout", "5s")
 
 	viper.SetDefault("services.inference.host", "localhost")
@@ -145,23 +122,9 @@ func setDefaults() {
 	viper.SetDefault("services.safety.timeout", "5s")
 
 	viper.SetDefault("services.llm.host", "localhost")
-	viper.SetDefault("services.llm.port", 8085)
+	viper.SetDefault("services.llm.port", 8086)
 	viper.SetDefault("services.llm.timeout", "30s")
 
-	// vLLM (Enterprise)
-	viper.SetDefault("vllm.host", "localhost")
-	viper.SetDefault("vllm.port", 8000)
-	viper.SetDefault("vllm.model", "microsoft/DialoGPT-small")
-	viper.SetDefault("vllm.temperature", 0.7)
-	viper.SetDefault("vllm.max_tokens", 500)
-	viper.SetDefault("vllm.timeout", "30s")
-
-
-	// Redis
-	viper.SetDefault("redis.host", "localhost")
-	viper.SetDefault("redis.port", 6379)
-	viper.SetDefault("redis.password", "")
-	viper.SetDefault("redis.db", 0)
 
 	// Google
 	viper.SetDefault("google.api_key", "")
@@ -190,25 +153,16 @@ func overrideWithEnv() {
 	if val := os.Getenv("GOOGLE_CX"); val != "" {
 		viper.Set("google.cx", val)
 	}
-	if val := os.Getenv("REDIS_HOST"); val != "" {
-		viper.Set("redis.host", val)
-	}
-	if val := os.Getenv("REDIS_PORT"); val != "" {
-		if port, err := strconv.Atoi(val); err == nil {
-			viper.Set("redis.port", port)
-		}
-	}
-	if val := os.Getenv("REDIS_PASSWORD"); val != "" {
-		viper.Set("redis.password", val)
-	}
-	if val := os.Getenv("VLLM_HOST"); val != "" {
-		viper.Set("vllm.host", val)
-	}
 	if val := os.Getenv("SEARCH_HOST"); val != "" {
 		viper.Set("services.search.host", val)
 	}
 	if val := os.Getenv("TOKENIZER_HOST"); val != "" {
 		viper.Set("services.tokenizer.host", val)
+	}
+	if val := os.Getenv("TOKENIZER_PORT"); val != "" {
+		if port, err := strconv.Atoi(val); err == nil {
+			viper.Set("services.tokenizer.port", port)
+		}
 	}
 	if val := os.Getenv("INFERENCE_HOST"); val != "" {
 		viper.Set("services.inference.host", val)
@@ -218,5 +172,10 @@ func overrideWithEnv() {
 	}
 	if val := os.Getenv("LLM_HOST"); val != "" {
 		viper.Set("services.llm.host", val)
+	}
+	if val := os.Getenv("LLM_PORT"); val != "" {
+		if port, err := strconv.Atoi(val); err == nil {
+			viper.Set("services.llm.port", port)
+		}
 	}
 }

@@ -100,7 +100,7 @@ start_services() {
     case $mode in
         "app-only")
             print_status "Starting application services only..."
-            docker-compose up --build -d gateway search tokenizer inference safety redis ollama
+            docker-compose up --build -d gateway search tokenizer inference safety llm
             print_success "Application services started!"
             print_status "Access your application at: http://localhost:8080"
             ;;
@@ -158,7 +158,7 @@ show_logs() {
     local service=$1
     if [ -z "$service" ]; then
         print_error "Please specify a service name"
-        echo "Available services: gateway, search, tokenizer, inference, safety, redis, ollama, prometheus, grafana"
+        echo "Available services: gateway, search, tokenizer, inference, safety, llm, prometheus, grafana"
         exit 1
     fi
     

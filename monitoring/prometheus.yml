@@ -33,7 +33,7 @@ scrape_configs:
   # Tokenizer service (CPU intensive)
   - job_name: 'ai-search-tokenizer'
     static_configs:
-      - targets: ['tokenizer:8082']
+      - targets: ['tokenizer:8090']
     metrics_path: '/metrics'
     scrape_interval: 15s
     scrape_timeout: 10s
@@ -44,14 +44,6 @@ scrape_configs:
       - targets: ['safety:8084']
     metrics_path: '/metrics'
     scrape_interval: 15s
-    scrape_timeout: 10s
-
-  # Redis
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis:6379']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
     scrape_timeout: 10s
 
   # Node exporter for system metrics

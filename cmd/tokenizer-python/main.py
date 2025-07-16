@@ -15,7 +15,6 @@ from typing import Optional
 
 import grpc
 from transformers import AutoTokenizer
-import redis
 
 # Import generated protobuf code
 sys.path.append('/app/proto')
@@ -43,20 +42,7 @@ class TokenizerService(pb2_grpc.TokenizerServiceServicer):
     
     def __init__(self):
         self.tokenizers = {}
-        self.redis_client = None
-        self._initialize_redis()
         self._initialize_tokenizers()
-    
-    def _initialize_redis(self):
-        """Initialize Redis connection for caching"""
-        try:
-            redis_host = os.getenv('REDIS_HOST', 'localhost')
-            self.redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
-            self.redis_client.ping()
-            logger.info(f"Connected to Redis at {redis_host}")
-        except Exception as e:
-            logger.warning(f"Redis connection failed, continuing without cache: {e}")
-            self.redis_client = None
     
     def _initialize_tokenizers(self):
         """Initialize supported tokenizers"""
@@ -107,33 +93,7 @@ class TokenizerService(pb2_grpc.TokenizerServiceServicer):
             tokenizer = self._get_tokenizer(request.model_name)
             actual_model = request.model_name if request.model_name in self.tokenizers else self.default_model
             
-            # Check cache
-            cache_key = self._cache_key("tokenize", request.text, actual_model, 
-                                      max_tokens=request.max_tokens, special=request.include_special_tokens)
-            cache_status = "miss"
-            
-            if self.redis_client:
-                try:
-                    cached = self.redis_client.get(cache_key)
-                    if cached:
-                        import json
-                        cached_data = json.loads(cached)
-                        cache_status = "hit"
-                        logger.info(f"Cache hit for tokenization")
-                        
-                        return pb2.TokenizeResponse(
-                            token_ids=cached_data["token_ids"],
-                            token_strings=cached_data["token_strings"],
-                            token_count=len(cached_data["token_ids"]),
-                            truncated_text=cached_data.get("truncated_text", ""),
-                            was_truncated=cached_data.get("was_truncated", False),
-                            model_used=actual_model,
-                            processing_time_ms=cached_data.get("processing_time_ms", 0),
-                            cache_status=cache_status,
-                            success=True
-                        )
-                except Exception as e:
-                    logger.warning(f"Cache read error: {e}")
+            cache_status = "disabled"
             
             # Tokenize
             max_length = min(request.max_tokens, 1024) if request.max_tokens > 0 else 1024
@@ -154,21 +114,6 @@ class TokenizerService(pb2_grpc.TokenizerServiceServicer):
             truncated_text = request.text if not was_truncated else tokenizer.decode(token_ids, skip_special_tokens=True)
             
             processing_time = (time.time() - start_time) * 1000
-            
-            # Cache result
-            if self.redis_client and cache_status == "miss":
-                try:
-                    import json
-                    cache_data = {
-                        "token_ids": token_ids,
-                        "token_strings": token_strings,
-                        "truncated_text": truncated_text,
-                        "was_truncated": was_truncated,
-                        "processing_time_ms": processing_time
-                    }
-                    self.redis_client.setex(cache_key, 3600, json.dumps(cache_data))  # 1 hour TTL
-                except Exception as e:
-                    logger.warning(f"Cache write error: {e}")
             
             logger.info(f"✅ Tokenization complete: {len(token_ids)} tokens ({processing_time:.2f}ms)")
             
@@ -205,30 +150,7 @@ class TokenizerService(pb2_grpc.TokenizerServiceServicer):
             tokenizer = self._get_tokenizer(request.model_name)
             actual_model = request.model_name if request.model_name in self.tokenizers else self.default_model
             
-            # Check cache
-            cache_key = self._cache_key("detokenize", str(request.token_ids), actual_model, 
-                                      skip_special=request.skip_special_tokens)
-            cache_status = "miss"
-            
-            if self.redis_client:
-                try:
-                    cached = self.redis_client.get(cache_key)
-                    if cached:
-                        import json
-                        cached_data = json.loads(cached)
-                        cache_status = "hit"
-                        logger.info(f"Cache hit for detokenization")
-                        
-                        return pb2.DetokenizeResponse(
-                            text=cached_data["text"],
-                            token_count=len(request.token_ids),
-                            model_used=actual_model,
-                            processing_time_ms=cached_data.get("processing_time_ms", 0),
-                            cache_status=cache_status,
-                            success=True
-                        )
-                except Exception as e:
-                    logger.warning(f"Cache read error: {e}")
+            cache_status = "disabled"
             
             # Detokenize
             text = tokenizer.decode(
@@ -238,18 +160,6 @@ class TokenizerService(pb2_grpc.TokenizerServiceServicer):
             )
             
             processing_time = (time.time() - start_time) * 1000
-            
-            # Cache result
-            if self.redis_client and cache_status == "miss":
-                try:
-                    import json
-                    cache_data = {
-                        "text": text,
-                        "processing_time_ms": processing_time
-                    }
-                    self.redis_client.setex(cache_key, 3600, json.dumps(cache_data))  # 1 hour TTL
-                except Exception as e:
-                    logger.warning(f"Cache write error: {e}")
             
             logger.info(f"✅ Detokenization complete: {len(text)} chars ({processing_time:.2f}ms)")
             
@@ -335,12 +245,7 @@ class TokenizerService(pb2_grpc.TokenizerServiceServicer):
         if not self.tokenizers:
             status = "unhealthy"
         
-        # Check Redis connection
-        if self.redis_client:
-            try:
-                self.redis_client.ping()
-            except:
-                status = "degraded"  # Can work without Redis
+        # No external dependencies to check
         
         return pb2.HealthCheckResponse(
             status=status,
@@ -359,10 +264,10 @@ async def serve():
         pb2_grpc.add_TokenizerServiceServicer_to_server(tokenizer_service, server)
         
         # Configure server
-        listen_addr = '[::]:8082'
+        listen_addr = '[::]:8090'
         server.add_insecure_port(listen_addr)
         
-        logger.info("🚀 Python Tokenizer Service starting on port 8082")
+        logger.info("🚀 Python Tokenizer Service starting on port 8090")
         logger.info("Features: Real BART tokenization, Caching, Mac optimized")
         await server.start()
         

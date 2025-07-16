@@ -28,14 +28,14 @@ A production-ready AI search engine built with Go microservices architecture, fe
        │                   │                   │
        ▼                   ▼                   ▼
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Search    │    │  Inference  │    │    Redis    │
-│ (Go:8081)   │    │(Python:8083)│    │  (Cache)    │
+│   Search    │    │  Inference  │    │ Prometheus  │
+│ (Go:8081)   │    │(Python:8083)│    │(Monitoring) │
 └─────────────┘    └─────────────┘    └─────────────┘
        │                   │                   │
        ▼                   ▼                   ▼
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Safety    │    │    BART     │    │  Prometheus │
-│ (Go:8084)   │    │    Model    │    │ (Monitoring)│
+│   Safety    │    │    BART     │    │   Grafana   │
+│ (Go:8084)   │    │    Model    │    │ (Dashboard) │
 └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
@@ -192,7 +192,7 @@ make test
 ### Running Individual Services
 ```bash
 # Start core services
-docker-compose up -d redis prometheus grafana
+docker-compose up -d prometheus grafana
 
 # Run Go services locally
 ./gateway &
@@ -385,7 +385,7 @@ ai-summary-inference/
 docker-compose up -d
 
 # Application only
-docker-compose up -d gateway llm search safety python-tokenizer inference redis
+docker-compose up -d gateway llm search safety tokenizer inference
 ```
 
 ### Production Considerations
@@ -394,7 +394,7 @@ docker-compose up -d gateway llm search safety python-tokenizer inference redis
 - **Resource Allocation**: Separate CPU/GPU node pools
 - **Monitoring**: External Prometheus/Grafana cluster
 - **Secrets Management**: External secret stores
-- **Caching**: Redis cluster for high availability
+- **Service Coordination**: Efficient request routing and load balancing
 
 ### Scaling Strategy
 - **Gateway**: Scale horizontally based on request volume
